@@ -48,7 +48,7 @@ Een nieuwe versie installeer je met `git pull` en daarna opnieuw `docker compose
 Een native SwiftUI-app (iOS 17+) in `ios/`, met twee keuzes bij de eerste start: verbinden met je server, of lokaal op je telefoon werken. Je gebouwde app gebruikt je eigen Apple-team:
 
 1. Open `ios/Stax.xcodeproj` in Xcode.
-2. Kies bij *Signing & Capabilities* je eigen team en pas zo nodig het *Bundle Identifier* aan (`app.stax.finance` is het standaard).
+2. Kies bij *Signing & Capabilities* je eigen team en pas zo nodig het *Bundle Identifier* aan (`nl.kristianvdlinde.stax.app` is het standaard).
 3. Bouw en start op je telefoon of in de simulator.
 
 **Lokaal werken** draait dezelfde rekenkern als de server, ingebouwd in de app (JavaScriptCore) met SQLite op de telefoon. Dat bestand `ios/Stax/Core/core.js` wordt gemaakt met `npm run core:build` en moet bij elke wijziging in `src/lib/server` of de API-routes opnieuw gebouwd en gecommit worden (de CI controleert dat).

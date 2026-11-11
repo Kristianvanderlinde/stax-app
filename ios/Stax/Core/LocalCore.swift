@@ -11,7 +11,7 @@ final class LocalCore: @unchecked Sendable {
 		var errorDescription: String? { if case .setup(let t) = self { "Lokale kern: \(t)" } else { nil } }
 	}
 
-	private let queue = DispatchQueue(label: "\(Bundle.main.bundleIdentifier ?? "app.stax.finance").core")
+	private let queue = DispatchQueue(label: "\(Bundle.main.bundleIdentifier ?? "nl.kristianvdlinde.stax.app").core")
 	private var context: JSContext!
 	private var core: JSValue!
 	private var db: OpaquePointer?

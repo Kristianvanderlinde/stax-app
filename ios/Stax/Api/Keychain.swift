@@ -3,7 +3,7 @@ import Security
 
 /// De apparaatsleutel staat in de iOS-sleutelhanger, alleen leesbaar op deze telefoon als hij ontgrendeld is.
 enum Keychain {
-	private static let service = Bundle.main.bundleIdentifier ?? "app.stax.finance"
+	private static let service = Bundle.main.bundleIdentifier ?? "nl.kristianvdlinde.stax.app"
 
 	static func read(_ account: String) -> String? {
 		let query: [String: Any] = [
