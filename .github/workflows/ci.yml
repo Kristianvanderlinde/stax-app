@@ -1,0 +1,24 @@
+# Controleert elke wijziging: typecontrole, de gedeelde rekenkern voor de app en de productiebuild.
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+jobs:
+  web:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: npm
+      - run: npm ci --no-audit --no-fund
+      - run: npm run check
+      - name: Rekenkern voor de app opnieuw bouwen en testen
+        run: npm run core:test
+      - name: ios/Stax/Core/core.js is bijgewerkt
+        run: git diff --exit-code ios/Stax/Core/core.js || (echo "Draai 'npm run core:build' en commit core.js." && exit 1)
+      - run: npm run build

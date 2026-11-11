@@ -1,0 +1,19 @@
+# Stax als container. Starten met:
+#   ORIGIN=https://stax.jouwdomein.nl docker compose up -d --build
+# Lokaal uitproberen kan met ORIGIN=http://localhost:3000. Een andere poort zet je met STAX_PORT.
+#
+# Alleen bereikbaar op deze machine (127.0.0.1); zet er een reverse proxy of tunnel voor
+# (bijvoorbeeld Caddy, Traefik of een Cloudflare-tunnel) voor HTTPS.
+services:
+  stax:
+    build: .
+    image: stax:latest
+    container_name: stax
+    restart: unless-stopped
+    ports:
+      - 127.0.0.1:${STAX_PORT:-3000}:3000
+    environment:
+      # Het adres waarop je Stax bereikt; nodig voor de controle op formulieren.
+      ORIGIN: ${ORIGIN:?Zet ORIGIN op het adres waarop je Stax bereikt, bijvoorbeeld https://stax.jouwdomein.nl}
+    volumes:
+      - ${STAX_DATA_DIR:-./data}:/data

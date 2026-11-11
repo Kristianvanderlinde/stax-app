@@ -1,0 +1,11 @@
+xcuserdata/
+DerivedData/
+build/
+*.ipa
+*.dSYM.zip
+.bundle/
+vendor/
+fastlane/report.xml
+fastlane/README.md
+fastlane/test_output/
+Local.xcconfig
