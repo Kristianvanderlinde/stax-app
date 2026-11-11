@@ -154,8 +154,13 @@ De database staat in `data/stax.db` (SQLite, ingebouwd in Node). Een andere map 
 | `core/` | Bundelt de API-routes tot `ios/Stax/Core/core.js`, de rekenkern van de app (JavaScriptCore) |
 | `ios/` | De SwiftUI-app |
 
-## Licentie
+## Licentie en bijdragen
 
-Stax is vrije software onder de [GNU Affero General Public License v3.0](LICENSE). Je mag het gebruiken, aanpassen en delen; wie een aangepaste versie als dienst aanbiedt, moet de broncode van die versie beschikbaar stellen.
+Stax is *source-available*, geen open source. De [Stax Personal Use License](LICENSE) geeft je het volgende:
+
+- **Mag:** gebruiken, zelf hosten, aanpassen en kopiëren voor jezelf en je huishouden. De broncode mag je lezen en je mag de repository op GitHub forken om wijzigingen voor te stellen.
+- **Mag niet:** delen in welke vorm dan ook (ook niet in een app store of op TestFlight), voor anderen draaien of als dienst aanbieden, en commercieel gebruiken.
+
+Een pull request is welkom. Met het insturen geef je de auteur het recht om je bijdrage vrij te gebruiken, ook in de App Store-app (zie sectie 3 van de licentie).
 
 Copyright © 2026 Kristian van der Linde.
