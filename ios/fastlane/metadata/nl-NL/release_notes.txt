@@ -1,0 +1,7 @@
+Stax 2.0 heeft een nieuw uiterlijk.
+
+- Alle schermen zijn opnieuw ontworpen: nieuwe tabbalk, menu's en bevestigingen
+- Budgetten en groepen versleep je nu met de streepjes, de rij tilt op en de andere schuiven mee
+- Regels tonen het icoon van hun budget
+- Terugvegen werkt op elk scherm
+- Kleinere verbeteringen aan Sparen, Boekingen en Instellingen

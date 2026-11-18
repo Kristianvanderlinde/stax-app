@@ -1,0 +1,21 @@
+Stax laat zien wat je deze maand nog kunt uitgeven en wat je opzij zet. Je verdeelt je geld vooraf over budgetten en spaarpotten, en elke boeking van je bank hoort bij een budget.
+
+**Alles draait om budgetten**
+Groepen met budgetten erin, zoals Wonen met Huur en Energie. Een budget begint elke maand opnieuw, of spaart door: een spaarpot of een doel met bedrag en datum. Stax laat zien of je voor of achter loopt en hoeveel je per maand nog moet inleggen.
+
+**Geen bankkoppeling**
+Je haalt zelf een export uit de app of website van je bank en leest die in. Stax werkt met camt.053 (XML, zoals veel Nederlandse banken die geven) en met CSV. Bij CSV herken je de kolommen met een voorbeeld uit je eigen bestand en pas je ze zo nodig aan. Boekingen die er al zijn, worden overgeslagen.
+
+**Slim indelen**
+Stax deelt nieuwe boekingen automatisch in met regels die het van je leert. Een boeking kun je splitsen over meerdere budgetten. Overboekingen tussen je eigen rekeningen worden herkend, en terugbetalingen kun je koppelen aan de uitgave, zodat het budget klopt.
+
+**Spaarrekening en betaalrekening samen**
+Spaarpotten tellen altijd op tot het saldo van je spaarrekening. Geld dat je uit een pot opneemt, houdt Stax bij.
+
+**Van jou**
+- Werk alleen op je telefoon, of verbind met je eigen Stax-server.
+- Geen account bij ons, geen advertenties, geen analyse.
+- Een back-up is één bestand dat je zelf bewaart en dat ook werkt tussen server en app.
+- Openen met Face ID.
+
+Stax is gratis. De broncode is in te zien op GitHub.

@@ -1,0 +1,69 @@
+# Bouwt de app en zet hem klaar in App Store Connect: build, teksten en schermafbeeldingen voor de nieuwe versie.
+# Draait in GitHub Actions (zie .github/workflows/ios-appstore.yml). Dient niet in voor review: dat doe je zelf in App Store Connect.
+#
+# Nodig als secrets in GitHub (Settings → Secrets and variables → Actions):
+#   APPLE_TEAM_ID         het Team ID uit developer.apple.com → Membership
+#   ASC_KEY_ID            Key ID van de App Store Connect API-sleutel
+#   ASC_ISSUER_ID         Issuer ID van die sleutel
+#   ASC_KEY_P8_BASE64     de .p8-sleutel, base64 (base64 -i AuthKey_XXXX.p8 | pbcopy)
+#
+# Ondertekenen gaat automatisch via Xcode (cloud signing) met dezelfde API-sleutel; er staan geen
+# certificaten in de repository of in GitHub.
+
+default_platform(:ios)
+
+platform :ios do
+  desc "Nieuwe build en teksten naar App Store Connect (zonder in te dienen)"
+  lane :appstore do
+    setup_ci
+
+    app_id = CredentialsManager::AppfileConfig.try_fetch_value(:app_identifier)
+    versie = ENV.fetch("STAX_VERSIE")
+
+    key_path = File.expand_path("AuthKey.p8")
+    File.binwrite(key_path, Base64.decode64(ENV.fetch("ASC_KEY_P8_BASE64")))
+    api_key = app_store_connect_api_key(
+      key_id: ENV.fetch("ASC_KEY_ID"),
+      issuer_id: ENV.fetch("ASC_ISSUER_ID"),
+      key_filepath: key_path
+    )
+
+    # Elke build krijgt een hoger nummer dan de laatste in App Store Connect.
+    build = latest_testflight_build_number(api_key: api_key, app_identifier: app_id, initial_build_number: 0) + 1
+    increment_build_number(xcodeproj: "Stax.xcodeproj", build_number: build)
+
+    build_app(
+      project: "Stax.xcodeproj",
+      scheme: "Stax",
+      configuration: "Release",
+      export_method: "app-store",
+      output_directory: "build",
+      xcargs: [
+        "DEVELOPMENT_TEAM=#{ENV.fetch('APPLE_TEAM_ID')}",
+        "-allowProvisioningUpdates",
+        "-authenticationKeyPath #{key_path}",
+        "-authenticationKeyID #{ENV.fetch('ASC_KEY_ID')}",
+        "-authenticationKeyIssuerID #{ENV.fetch('ASC_ISSUER_ID')}"
+      ].join(" "),
+      export_options: { signingStyle: "automatic", teamID: ENV.fetch("APPLE_TEAM_ID") }
+    )
+
+    upload_to_testflight(api_key: api_key, app_identifier: app_id, skip_waiting_for_build_processing: true)
+
+    upload_to_app_store(
+      api_key: api_key,
+      app_identifier: app_id,
+      app_version: versie,
+      skip_binary_upload: true,
+      metadata_path: "./fastlane/metadata",
+      screenshots_path: "./fastlane/screenshots",
+      overwrite_screenshots: true,
+      submit_for_review: false,
+      automatic_release: false,
+      force: true,
+      precheck_include_in_app_purchases: false
+    )
+  ensure
+    File.delete(key_path) if key_path && File.exist?(key_path)
+  end
+end
