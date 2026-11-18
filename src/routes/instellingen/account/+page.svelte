@@ -1,4 +1,5 @@
 <script lang="ts">
+	import { Terugknop } from 'vertex/web';
 	import { enhance } from '$app/forms';
 	import Icon from '$lib/components/Icon.svelte';
 	import { shortDate } from '$lib/format';
@@ -10,7 +11,7 @@
 
 <div class="stack">
 	<header>
-		<a class="link back" href="/instellingen"><Icon name="left" size={18} /> Instellingen</a>
+		<Terugknop href="/instellingen">Instellingen</Terugknop>
 		<h1>Account</h1>
 		<p class="muted">Ingelogd als <strong>{data.me?.name}</strong>.</p>
 	</header>

@@ -30,15 +30,15 @@ struct LoginView: View {
 
 	var body: some View {
 		NavigationStack(path: $path) {
-			page(subtitle: "Hoe wil je Stax gebruiken?") { choice }
+			welcome
 				.navigationDestination(for: Step.self) { step in
 					switch step {
 					case .server:
-						page(subtitle: "Vul het adres in van de server waar jouw Stax draait.") { serverStep }
+						page(titel: "Verbinden", subtitle: "Vul het adres in van de server waar jouw Stax draait.") { serverStep }
 					case .local:
-						page(subtitle: "Je gegevens blijven op deze telefoon. Zonder server, zonder account.") { localStep }
+						page(titel: "Lokaal beginnen", subtitle: "Je gegevens blijven op deze telefoon. Zonder server, zonder account.") { localStep }
 					case .login(let url):
-						page(subtitle: "Log in op \(url.host() ?? url.absoluteString) met je naam, wachtwoord en de code uit je authenticator.") { credentials(url) }
+						page(titel: "Inloggen", subtitle: "op \(url.host() ?? url.absoluteString)") { credentials(url) }
 					}
 				}
 		}
@@ -50,62 +50,69 @@ struct LoginView: View {
 		#endif
 	}
 
-	/// Logo, welkomsttekst en daaronder de inhoud van deze stap.
-	private func page<Content: View>(subtitle: String, @ViewBuilder content: () -> Content) -> some View {
-		Form {
-			Section {
-				VStack(spacing: 12) {
-					Image("Logo")
-						.resizable()
-						.frame(width: 76, height: 76)
-						.clipShape(RoundedRectangle(cornerRadius: 18, style: .continuous))
-						.shadow(color: .stax.opacity(0.3), radius: 12, y: 6)
-					Text("Welkom bij Stax").font(.title2.bold())
-					Text(subtitle)
-						.font(.subheadline)
-						.foregroundStyle(.secondary)
-						.multilineTextAlignment(.center)
-				}
-				.frame(maxWidth: .infinity)
-				.listRowBackground(Color.clear)
-			}
-			content()
-			if let error {
-				Section { Label(error, systemImage: "exclamationmark.triangle.fill").foregroundStyle(.red) }
-			}
+	/// Eerste scherm: logo en welkom in het midden, de twee keuzes onderaan.
+	private var welcome: some View {
+		VStack(spacing: 12) {
+			Spacer()
+			VertexLogo(maat: 72)
+			Text("Welkom bij Stax").vertexTekst(Vertex.Tekst.titelM).foregroundStyle(Vertex.Kleur.tekstHoofd).padding(.top, 8)
+			Text("Budgetteren op je eigen manier. Je gegevens blijven van jou.")
+				.vertexTekst(Vertex.Tekst.body).foregroundStyle(Vertex.Kleur.tekstGedempt).multilineTextAlignment(.center)
+			Spacer()
 		}
-		.navigationBarTitleDisplayMode(.inline)
+		.padding(.horizontal, 32)
+		.frame(maxWidth: .infinity, maxHeight: .infinity)
+		.safeAreaInset(edge: .bottom) {
+			VStack(spacing: 12) {
+				Button("Verbinden met je server") { path.append(.server) }.buttonStyle(VertexPrimaireKnop())
+				Button("Lokaal beginnen") { path.append(.local) }.buttonStyle(VertexSecundaireKnop())
+				Text("Lokaal staan je gegevens alleen op deze telefoon. Verwijder je de app, dan zijn ze weg. Maak daarom af en toe een back-up via Instellingen.")
+					.vertexTekst(Vertex.Tekst.klein).foregroundStyle(Vertex.Kleur.tekstGedempt).multilineTextAlignment(.center)
+			}
+			.padding(.horizontal, 16).padding(.bottom, 8)
+		}
+		.vertexPagina()
+		.toolbar(.hidden, for: .navigationBar)
 	}
 
-	// MARK: Keuze
-
-	private var choice: some View {
-		Section {
-			Button { path.append(.server) } label: {
-				ChoiceRow(icon: "server.rack", title: "Verbind met een server", subtitle: "Stax draait op je eigen server. Dan werken jij en je partner met dezelfde gegevens.")
+	/// Logo, titel en daaronder de velden van deze stap.
+	private func page<Content: View>(titel: String, subtitle: String, @ViewBuilder content: () -> Content) -> some View {
+		ScrollView {
+			VStack(alignment: .leading, spacing: 16) {
+				VertexLogo(maat: 56)
+				Text(titel).vertexTekst(Vertex.Tekst.titelM).foregroundStyle(Vertex.Kleur.tekstHoofd)
+				Text(subtitle).vertexTekst(Vertex.Tekst.body).foregroundStyle(Vertex.Kleur.tekstGedempt).padding(.top, -8)
+				content()
+				if let error {
+					Label(error, vSym: "exclamationmark.triangle.fill")
+						.vertexTekst(Vertex.Tekst.klein).foregroundStyle(Vertex.Kleur.statusNegatief)
+				}
 			}
-			.buttonStyle(.plain)
-			Button { path.append(.local) } label: {
-				ChoiceRow(icon: "iphone", title: "Lokaal op deze telefoon", subtitle: "Zonder server, alles blijft op je telefoon.")
-			}
-			.buttonStyle(.plain)
+			.padding(16)
+			.frame(maxWidth: .infinity, alignment: .leading)
 		}
+		.scrollBounceBehavior(.basedOnSize)
+		.font(.vBody)
+		.vertexPagina()
+		.navigationBarTitleDisplayMode(.inline)
 	}
 
 	// MARK: Lokaal
 
 	private var localStep: some View {
-		Section {
+		VStack(spacing: 12) {
 			Button { begin(restoring: nil) } label: {
 				ChoiceRow(icon: "sparkles", title: "Nieuw beginnen", subtitle: "Start met een leeg Stax en je eigen budgetten.", busy: busy)
 			}
 			.buttonStyle(.plain)
+			.vertexKaart()
 			Button { picking = true } label: {
 				ChoiceRow(icon: "arrow.down.doc", title: "Ik heb een back-up", subtitle: "Zet je gegevens terug uit een Stax-back-up, ook van een server.")
 			}
 			.buttonStyle(.plain)
-		} footer: {
+			.vertexKaart()
 			Text("Je gegevens staan alleen op deze telefoon. Verwijder je de app, dan zijn ze weg. Maak daarom af en toe een back-up via Instellingen.")
+				.vertexTekst(Vertex.Tekst.klein).foregroundStyle(Vertex.Kleur.tekstGedempt)
 		}
 		.disabled(busy)
 		.fileImporter(isPresented: $picking, allowedContentTypes: [.json], allowsMultipleSelection: false) { result in
@@ -138,57 +145,53 @@ struct LoginView: View {
 	// MARK: Server
 
 	private var serverStep: some View {
-		Group {
-			Section {
-				TextField("Serveradres", text: $server, prompt: Text("https://stax.jouwdomein.nl").foregroundStyle(.secondary))
+		VStack(spacing: 16) {
+			VertexVeld(label: "Serveradres") {
+				TextField("Serveradres", text: $server, prompt: Text("https://stax.jouwdomein.nl"))
 					.keyboardType(.URL)
 					.textContentType(.URL)
 					.textInputAutocapitalization(.never)
 					.autocorrectionDisabled()
 					.onSubmit { Task { await check() } }
 			}
-			Section {
-				Button {
-					Task { await check() }
-				} label: {
-					HStack {
-						Spacer()
-						if busy { ProgressView() } else { Text("Doorgaan").bold() }
-						Spacer()
-					}
-				}
-				.disabled(busy || server.trimmingCharacters(in: .whitespaces).isEmpty)
+			Button { Task { await check() } } label: {
+				if busy { ProgressView().tint(.white) } else { Text("Doorgaan") }
 			}
+			.buttonStyle(VertexPrimaireKnop())
+			.disabled(busy || server.trimmingCharacters(in: .whitespaces).isEmpty)
+			.opacity(server.trimmingCharacters(in: .whitespaces).isEmpty ? 0.5 : 1)
 		}
 	}
 
 	// MARK: Inloggen
 
 	private func credentials(_ url: URL) -> some View {
-		Group {
-			Section {
+		VStack(spacing: 16) {
+			VertexVeld(label: "Naam") {
 				TextField("Naam", text: $name)
 					.textContentType(.username)
 					.textInputAutocapitalization(.never)
 					.autocorrectionDisabled()
+			}
+			VertexVeld(label: "Wachtwoord") {
 				SecureField("Wachtwoord", text: $password)
 					.textContentType(.password)
+			}
+			VertexVeld(label: "Code uit de authenticator") {
 				TextField("Code uit de authenticator", text: $code)
 					.textContentType(.oneTimeCode)
 					.keyboardType(.numberPad)
 			}
-			Section {
-				Button {
-					Task { await login(url) }
-				} label: {
-					HStack {
-						Spacer()
-						if busy { ProgressView() } else { Text("Inloggen").bold() }
-						Spacer()
-					}
-				}
-				.disabled(busy || name.isEmpty || password.isEmpty || code.count < 6)
+			Button { Task { await login(url) } } label: {
+				if busy { ProgressView().tint(.white) } else { Text("Inloggen") }
 			}
+			.buttonStyle(VertexPrimaireKnop())
+			.disabled(busy || name.isEmpty || password.isEmpty || code.count < 6)
+			.opacity(name.isEmpty || password.isEmpty || code.count < 6 ? 0.5 : 1)
+			.padding(.top, 8)
+			Button("Ander serveradres") { path.removeLast() }
+				.vertexTekst(Vertex.Tekst.bodyVet).foregroundStyle(Vertex.Kleur.accentStandaard)
+				.frame(maxWidth: .infinity)
 		}
 	}
 
@@ -247,23 +250,20 @@ private struct ChoiceRow: View {
 
 	var body: some View {
 		HStack(spacing: 14) {
-			Image(systemName: icon)
-				.font(.title3)
-				.foregroundStyle(.white)
-				.frame(width: 40, height: 40)
-				.background(LinearGradient(colors: [.stax.opacity(0.85), .stax], startPoint: .top, endPoint: .bottom), in: Circle())
+			VSym(icon)
+				.font(.system(size: 18, weight: .semibold))
+				.foregroundStyle(Vertex.Kleur.accentStandaard)
+				.frame(width: 44, height: 44)
+				.background(Vertex.Kleur.accentZacht, in: RoundedRectangle(cornerRadius: 16, style: .continuous))
 			VStack(alignment: .leading, spacing: 2) {
-				HStack {
-					Text(title).font(.body.weight(.semibold))
-					if let badge { Text(badge).font(.caption2.weight(.semibold)).padding(.horizontal, 6).padding(.vertical, 2).background(.quaternary, in: Capsule()) }
-				}
-				Text(subtitle).font(.footnote).foregroundStyle(.secondary)
+				Text(title).vertexTekst(Vertex.Tekst.bodyVet).foregroundStyle(Vertex.Kleur.tekstHoofd)
+				Text(subtitle).vertexTekst(Vertex.Tekst.klein).foregroundStyle(Vertex.Kleur.tekstGedempt).multilineTextAlignment(.leading)
 			}
 			Spacer(minLength: 0)
 			if busy { ProgressView() }
 		}
+		.padding(16)
 		.contentShape(Rectangle())
-		.padding(.vertical, 4)
 	}
 }
 
@@ -272,22 +272,24 @@ struct LockView: View {
 	@Environment(Session.self) private var session
 
 	var body: some View {
-		VStack(spacing: 20) {
-			Image("Logo")
-				.resizable()
-				.frame(width: 88, height: 88)
-				.clipShape(RoundedRectangle(cornerRadius: 20, style: .continuous))
+		VStack(spacing: 12) {
+			Spacer()
+			VertexLogo(maat: 72)
+			Text("Ontgrendel Stax").vertexTekst(Vertex.Tekst.titelM).foregroundStyle(Vertex.Kleur.tekstHoofd).padding(.top, 8)
+			Text("Na een minuut op de achtergrond vraagt Stax opnieuw om Face ID.")
+				.vertexTekst(Vertex.Tekst.body).foregroundStyle(Vertex.Kleur.tekstGedempt).multilineTextAlignment(.center)
 			Button {
 				Task { await session.unlock() }
 			} label: {
-				Label("Ontgrendel Stax", systemImage: "faceid")
-					.frame(maxWidth: 260)
+				Label("Ontgrendel", vSym: "faceid")
 			}
-			.buttonStyle(.borderedProminent)
-			.controlSize(.large)
+			.buttonStyle(VertexPrimaireKnop())
+			.padding(.top, 12)
+			Spacer()
 		}
+		.padding(.horizontal, 32)
 		.frame(maxWidth: .infinity, maxHeight: .infinity)
-		.background(Color(.systemGroupedBackground))
+		.vertexPagina()
 		.task { await session.unlock() }
 	}
 }

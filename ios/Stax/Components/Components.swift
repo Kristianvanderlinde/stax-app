@@ -1,53 +1,41 @@
 import SwiftUI
 import UIKit
 
-/// Icoon van een budget: dezelfde Google Material-iconen als de website, als vector in de app.
+/// Icoon van een budget: dezelfde Google Material-iconen als de website, in een Vertex-tegel met de kleur van de groep.
 struct CategoryIcon: View {
 	let name: String?
 	var size: CGFloat = 32
 	var solid = false
-	/// Op een gradient: een wit icoon in een lichte, doorschijnende cirkel.
+	/// Kleur van de groep (accent, lucht, koraal, mint of zon).
+	var hue: String?
+	/// Op een gradient: een wit icoon in een lichte, doorschijnende tegel.
 	var onGradient = false
 
 	var body: some View {
-		let image = name.flatMap { UIImage(named: "icon-\($0)") } ?? UIImage(named: "icon-category")
-		ZStack {
-			if onGradient {
-				Circle().fill(Color.white.opacity(0.24))
-			} else {
-				Circle().fill(solid ? AnyShapeStyle(.staxGradient) : AnyShapeStyle(Color.stax.opacity(0.12)))
+		if onGradient {
+			ZStack {
+				if let image = iconImage(name) {
+					image.renderingMode(.template).resizable().scaledToFit().frame(width: size * 0.5, height: size * 0.5).foregroundStyle(.white)
+				}
 			}
-			if let image {
-				Image(uiImage: image)
-					.renderingMode(.template)
-					.resizable()
-					.scaledToFit()
-					.frame(width: size * 0.56, height: size * 0.56)
-					.foregroundStyle(solid || onGradient ? Color.white : Color.stax)
-			}
+			.frame(width: size, height: size)
+			.background(Color.white.opacity(0.24), in: RoundedRectangle(cornerRadius: size * 0.32, style: .continuous))
+		} else {
+			VertexTegel(image: iconImage(name), hue: VertexHue(hue), effen: solid, maat: size)
 		}
-		.frame(width: size, height: size)
 	}
 }
 
-/// Dunne voortgangsbalk, zoals op de website.
+/// Voortgangsbalk met tekst eronder.
 struct ProgressBar: View {
 	let bar: Bar
 
 	var body: some View {
 		VStack(alignment: .leading, spacing: 4) {
-			GeometryReader { geo in
-				ZStack(alignment: .leading) {
-					Capsule().fill(Color(.systemFill))
-					Capsule()
-						.fill(bar.over ? AnyShapeStyle(Color.red) : AnyShapeStyle(.staxGradient))
-						.frame(width: geo.size.width * min(1, max(0, bar.pct / 100)))
-				}
-			}
-			.frame(height: 6)
+			VertexBalk(pct: bar.pct, over: bar.over)
 			Text(bar.text)
-				.font(.caption)
-				.foregroundStyle(bar.warn ? .orange : .secondary)
+				.font(.vCaption)
+				.foregroundStyle(bar.warn ? Vertex.Kleur.statusWaarschuwing : Vertex.Kleur.tekstGedempt)
 		}
 	}
 }
@@ -59,19 +47,24 @@ struct MonthMenu: View {
 	var allowAll = false
 
 	var body: some View {
-		Menu {
+		VertexMenu(scroll: true) {
 			if allowAll {
-				Button("Alle maanden") { month = "alle" }
+				Button { month = "alle" } label: { MenuKeuzeRij(tekst: "Alle maanden", gekozen: month == "alle") }
 			}
 			ForEach(months, id: \.self) { m in
-				Button(Format.monthTitle(m)) { month = m }
+				Button { month = m } label: { MenuKeuzeRij(tekst: Format.monthTitle(m), gekozen: month == m) }
 			}
 		} label: {
 			HStack(spacing: 4) {
 				Text(month == "alle" ? "Alle maanden" : month.map { Format.monthTitle($0) } ?? "Maand")
-				Image(systemName: "chevron.down").font(.caption.weight(.semibold))
+				VSym("chevron.down", 11)
 			}
-			.font(.subheadline.weight(.semibold))
+			.vertexTekst(Vertex.Tekst.bodyVet)
+			.foregroundStyle(Vertex.Kleur.accentStandaard)
+			.padding(.horizontal, 14).frame(height: 40)
+			.background(Vertex.Kleur.hoogte2Vlak, in: Capsule())
+			.overlay(Capsule().strokeBorder(Vertex.Kleur.hoogte2Rand, lineWidth: 1))
+			.vertexSchaduw(2)
 		}
 	}
 }
@@ -96,17 +89,17 @@ struct BudgetRowView: View {
 
 	var body: some View {
 		HStack(alignment: .center, spacing: 12) {
-			CategoryIcon(name: row.icon, size: 34, solid: row.group)
+			CategoryIcon(name: row.icon, size: 44, solid: row.group, hue: row.hue)
 			VStack(alignment: .leading, spacing: 2) {
 				HStack(alignment: .firstTextBaseline) {
-					Text(row.name).font(.body).lineLimit(1)
+					Text(row.name).font(.vBody).lineLimit(1)
 					Spacer(minLength: 8)
 					Text(Format.amount(row.balance ?? row.net))
-						.font(.body.weight(.semibold).monospacedDigit())
-						.foregroundStyle((row.balance ?? 0) < 0 ? .red : .primary)
+						.font(.vBody.weight(.semibold).monospacedDigit())
+						.foregroundStyle((row.balance ?? 0) < 0 ? Vertex.Kleur.statusNegatief : Vertex.Kleur.tekstHoofd)
 				}
 				if !detail.isEmpty {
-					Text(detail).font(.subheadline.monospacedDigit()).foregroundStyle(over ? Color.red : Color.secondary).lineLimit(1)
+					Text(detail).font(.vSub.monospacedDigit()).foregroundStyle(over ? Vertex.Kleur.statusNegatief : Vertex.Kleur.tekstGedempt).lineLimit(1)
 				}
 			}
 		}
@@ -131,45 +124,39 @@ struct PeriodBar: View {
 	var body: some View {
 		HStack(spacing: 2) {
 			step("chevron.left", "Vorige maand") { month = Format.shift(month, by: -1) }
-			Menu {
+			VertexMenu(scroll: true, boven: true) {
 				ForEach(months, id: \.self) { m in
-					Button {
-						month = m
-					} label: {
-						if m == month { Label(Format.monthTitle(m), systemImage: "checkmark") } else { Text(Format.monthTitle(m)) }
-					}
+					Button { month = m } label: { MenuKeuzeRij(tekst: Format.monthTitle(m), gekozen: m == month) }
 				}
 			} label: {
 				// Vaste breedte, zodat de balk niet verspringt als de maandnaam korter of langer is.
 				Text(browse == nil ? Format.monthTitle(month) : Format.shortMonth(month))
-					.font(.subheadline.weight(.semibold))
-					.foregroundStyle(.primary)
+					.vertexTekst(Vertex.Tekst.bodyVet)
+					.foregroundStyle(Vertex.Kleur.tekstHoofd)
 					.lineLimit(1)
 					.minimumScaleFactor(0.8)
 					.frame(width: browse == nil ? 138 : 68, height: 36)
 			}
-			// Een menu kleurt zijn tekst met de accentkleur; de maandnaam hoort in de gewone tekstkleur.
-			.tint(.primary)
 			step("chevron.right", "Volgende maand") { month = Format.shift(month, by: 1) }
 			if let browse {
 				Divider().frame(height: 22).padding(.horizontal, 4)
 				step("chevron.left", "Vorig budget", enabled: browse.previous != nil) { if let id = browse.previous { browse.go(id) } }
-				Text(browse.name).font(.subheadline.weight(.semibold)).lineLimit(1).minimumScaleFactor(0.75).frame(width: 118)
+				Text(browse.name).vertexTekst(Vertex.Tekst.bodyVet).foregroundStyle(Vertex.Kleur.tekstHoofd).lineLimit(1).minimumScaleFactor(0.75).frame(width: 118)
 				step("chevron.right", "Volgend budget", enabled: browse.next != nil) { if let id = browse.next { browse.go(id) } }
 			}
 		}
 		.padding(5)
-		.background(.regularMaterial, in: Capsule())
-		.overlay(Capsule().strokeBorder(Color.primary.opacity(0.08)))
-		.shadow(color: .black.opacity(0.12), radius: 14, y: 4)
+		.background(Vertex.Kleur.hoogte2Vlak, in: Capsule())
+		.overlay(Capsule().strokeBorder(Vertex.Kleur.hoogte2Rand, lineWidth: 1))
+		.vertexSchaduw(3)
 	}
 
 	private func step(_ symbol: String, _ label: String, enabled: Bool = true, action: @escaping () -> Void) -> some View {
 		Button(action: action) {
-			Image(systemName: symbol).font(.subheadline.weight(.bold)).frame(width: 36, height: 36).contentShape(Rectangle())
+			VSym(symbol, 16).frame(width: 36, height: 36).contentShape(Rectangle())
 		}
 		.buttonStyle(.plain)
-		.foregroundStyle(enabled ? Color.stax : Color.secondary.opacity(0.4))
+		.foregroundStyle(enabled ? Vertex.Kleur.accentStandaard : Vertex.Kleur.tekstVaag)
 		.disabled(!enabled)
 		.accessibilityLabel(label)
 	}
@@ -189,15 +176,19 @@ struct Loader<T, Content: View>: View {
 			if let value {
 				content(value)
 			} else if let error {
-				ContentUnavailableView {
-					Label("Kon Stax niet bereiken", systemImage: "wifi.exclamationmark")
-				} description: {
-					Text(error)
-				} actions: {
-					Button("Opnieuw") { Task { await load() } }
+				VStack(spacing: 12) {
+					VSym("wifi.exclamationmark", 34).foregroundStyle(Vertex.Kleur.tekstVaag)
+					Text("Kon Stax niet bereiken").vertexTekst(Vertex.Tekst.subkop).foregroundStyle(Vertex.Kleur.tekstHoofd)
+					Text(error).vertexTekst(Vertex.Tekst.klein).foregroundStyle(Vertex.Kleur.tekstGedempt).multilineTextAlignment(.center)
+					Button("Opnieuw") { Task { await load() } }.buttonStyle(VertexSecundaireKnop()).frame(maxWidth: 200)
 				}
+				.padding(32)
+				.frame(maxWidth: .infinity, maxHeight: .infinity)
+				.vertexPagina(gloed: false)
+				.toolbar(.hidden, for: .navigationBar)
 			} else {
-				ProgressView().frame(maxWidth: .infinity, maxHeight: .infinity)
+				ProgressView().frame(maxWidth: .infinity, maxHeight: .infinity).vertexPagina(gloed: false)
+					.toolbar(.hidden, for: .navigationBar)
 			}
 		}
 		.task(id: "\(key)|\(session.revision)") { await load() }
@@ -213,5 +204,25 @@ struct Loader<T, Content: View>: View {
 		} catch {
 			if value == nil { self.error = error.localizedDescription }
 		}
+	}
+}
+
+/// Het icoon van een budget als afbeelding, voor de Vertex-tegel.
+func iconImage(_ name: String?) -> Image? {
+	(name.flatMap { UIImage(named: "icon-\($0)") } ?? UIImage(named: "icon-category")).map { Image(uiImage: $0) }
+}
+
+/// Rij in een keuzemenu: tekst links, vinkje rechts bij de gekozen waarde, zodat de tekst niet verspringt.
+struct MenuKeuzeRij: View {
+	let tekst: String
+	let gekozen: Bool
+
+	var body: some View {
+		HStack(spacing: 12) {
+			Text(tekst)
+			Spacer(minLength: 0)
+			if gekozen { VSym("checkmark", 16).foregroundStyle(Vertex.Kleur.accentStandaard) }
+		}
+		.frame(maxWidth: .infinity)
 	}
 }

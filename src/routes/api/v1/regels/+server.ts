@@ -1,6 +1,6 @@
 import { error, json } from '@sveltejs/kit';
 import { db } from '$lib/server/db';
-import { isBudgetId, loadTree } from '$lib/server/categories';
+import { isBudgetId, loadTree, toOptions } from '$lib/server/categories';
 import { autoCategorize } from '$lib/server/categorize';
 
 /** Regels plus de budgetten waaruit je kunt kiezen. */
@@ -9,7 +9,10 @@ export function GET() {
 	const rules = db
 		.prepare("SELECT id, field, op, pattern, category_id FROM rules ORDER BY field = 'mcc', created_at DESC, id DESC")
 		.all();
-	const budgets = tree.flat.filter((n) => isBudgetId(tree, n.id)).map((n) => ({ id: n.id, name: n.name, path: n.path.join(' › ') }));
+	const opties = new Map(toOptions(tree).map((o) => [o.id, o]));
+	const budgets = tree.flat
+		.filter((n) => isBudgetId(tree, n.id))
+		.map((n) => ({ id: n.id, name: n.name, path: n.path.join(' › '), icon: opties.get(n.id)?.icon ?? null, hue: opties.get(n.id)?.hue ?? null }));
 	return json({ rules, budgets });
 }
 

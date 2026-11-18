@@ -1,4 +1,5 @@
 <script lang="ts">
+	import { Terugknop } from 'vertex/web';
 	import Icon from '$lib/components/Icon.svelte';
 	import { enhance } from '$app/forms';
 	import CategoryCombo from '$lib/components/CategoryCombo.svelte';
@@ -23,7 +24,7 @@
 
 <div class="stack">
 	<header>
-		<a class="link back" href="/instellingen"><Icon name="left" size={18} /> Instellingen</a>
+		<Terugknop href="/instellingen">Instellingen</Terugknop>
 		<h1>Regels</h1>
 		<p class="muted">
 			Regels delen nieuwe boekingen automatisch in. Ze ontstaan vanzelf als je bij het indelen “voortaan zo indelen” aanvinkt. Een regel op

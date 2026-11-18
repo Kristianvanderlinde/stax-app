@@ -1,6 +1,8 @@
 <script lang="ts">
 	import BudgetCell from './BudgetCell.svelte';
 	import Icon from './Icon.svelte';
+	import { hueStyle } from '$lib/hue';
+	import { page } from '$app/state';
 	import { amount as fmt } from '$lib/format';
 	import { figures, type Figures } from '$lib/figures';
 	import { kindOf, kindTag, type NodeStats } from '$lib/types';
@@ -13,8 +15,9 @@
 		groups,
 		month,
 		header = true,
-		income = false
-	}: { groups: { group: NodeStats; rows: Row[] }[]; month: string; header?: boolean; income?: boolean } = $props();
+		income = false,
+		losse = false
+	}: { groups: { group: NodeStats; rows: Row[] }[]; month: string; header?: boolean; income?: boolean; losse?: boolean } = $props();
 
 	function totals(rows: Row[]) {
 		let plan = 0;
@@ -60,28 +63,26 @@
 	const signed = (v: number) => fmt(v, true);
 </script>
 
-<div class="monthlist">
+<div class="monthlist" class:losse>
 	<div class="cols head" aria-hidden="true">
 		<span></span>
 		<span></span>
 		<span class="r">{income ? 'Verwacht' : 'Gebudgetteerd'}</span>
 		<span class="r">{income ? 'Ontvangen' : 'Erin / eruit'}</span>
 		<span class="r">{income ? 'Verschil' : 'Balans'}</span>
-		<span></span>
 	</div>
 	{#each groups as { group, rows } (group.id)}
 		{@const t = totals(rows)}
-		<section class="block">
+		<section class="block" class:kaart={losse} style={hueStyle(group.id, page.data.groupHues ?? {}, income ? 'mint' : undefined)}>
 			{#if header}<a class="cols ghead" href="/map/{group.id}?maand={month}">
 				<span class="who">
-					<span class="avatar sm"><Icon name={group.icon} size={18} /></span>
+					<span class="tegel groep"><Icon name={group.icon} size={18} /></span>
 					<strong>{group.name}</strong>
 				</span>
 				<span></span>
 				<span class="r num budgeted" class:zero={!t.plan}>{amount(t.plan)}</span>
 				<span class="r num spentv" class:zero={t.net >= 0}>{signed(t.net)}</span>
 				<span class="r num gbal" class:neg={t.balance < 0} class:zero={!t.balance}>{amount(t.balance)}</span>
-				<Icon name="right" size={16} />
 			</a>{/if}
 			<ul>
 				{#each rows as r, i (r.node.id)}
@@ -91,7 +92,7 @@
 					<li>
 						<div class="cols row" class:parent={r.parent} style:--level={r.level}>
 							<a class="who" href={link(r)}>
-								<span class="avatar soft sm"><Icon name={r.node.icon} size={17} /></span>
+								<span class="tegel"><Icon name={r.node.icon} size={17} /></span>
 								<span class="names">
 									<strong>{r.node.name}</strong>
 									<span class="sub muted small">
@@ -122,7 +123,6 @@
 									{#if income}<span class="muted">ontvangen {amount(f.net)}</span>
 									{:else if f.net}<span class:muted={f.net > 0}>{f.net > 0 ? 'erin' : 'eruit'} {amount(Math.abs(f.net))}</span>{/if}
 							</span>
-							<Icon name="right" size={16} />
 						</div>
 					</li>
 				{/each}
@@ -135,67 +135,78 @@
 	.monthlist {
 		display: flex;
 		flex-direction: column;
-		gap: 18px;
+		background: var(--surface);
+		border: 1px solid var(--hoogte-1-rand);
+		border-radius: var(--radius);
+		box-shadow: var(--shadow);
+		overflow: hidden;
+	}
+	/* Elke groep als eigen blok: de kolomkop staat los erboven, elke groep is een kaart. */
+	.monthlist.losse {
+		background: none;
+		border: 0;
+		box-shadow: none;
+		overflow: visible;
+		padding: 0;
+		gap: var(--ruimte-4);
+	}
+	.losse .head {
+		margin: 0;
+		padding: 0 var(--ruimte-6);
+		border-bottom: 0;
+	}
+	.block.kaart {
+		background: var(--surface);
+		border: 1px solid var(--hoogte-1-rand);
+		border-radius: var(--radius);
+		box-shadow: var(--shadow);
+		padding: var(--ruimte-2) 0;
+		overflow: hidden;
 	}
 	.cols {
 		display: grid;
-		grid-template-columns: minmax(200px, 1.6fr) minmax(140px, 1.3fr) 130px 130px 140px 16px;
+		grid-template-columns: minmax(220px, 1fr) 200px 120px 120px 120px;
 		align-items: center;
-		gap: 18px;
+		gap: var(--ruimte-5);
 	}
 	.head {
-		padding: 0 16px;
-		font-size: 12.5px;
-		font-weight: 500;
+		padding: var(--ruimte-4) var(--ruimte-6);
+		margin-bottom: var(--ruimte-2);
+		border-bottom: 1px solid var(--line);
+		font: 600 12px/16px var(--tekst-familie);
 		color: var(--muted);
 	}
 	.r {
 		text-align: right;
 	}
-	.block {
-		background: var(--surface);
-		border-radius: var(--radius);
-		box-shadow: var(--shadow);
-		overflow: hidden;
-	}
 	.ghead {
-		padding: 16px 16px 10px;
+		margin: 0 var(--ruimte-2);
+		padding: var(--ruimte-4) var(--ruimte-4);
+		border-radius: var(--vorm-lg);
 		transition: background-color 0.15s;
 	}
 	.ghead:hover {
 		background: var(--surface-2);
 	}
 	.ghead strong {
-		font-size: 17px;
-		font-weight: 650;
+		font: 600 15px/22px var(--tekst-familie);
 	}
 	.gbal {
-		font-weight: 650;
-		font-size: 16px;
-	}
-	.ghead > :global(svg),
-	.row > :global(svg) {
-		color: var(--faint);
+		font-weight: 600;
 	}
 	ul {
 		list-style: none;
 		margin: 0;
-		padding: 0 0 6px;
+		padding: 0;
 	}
-	.block > ul:first-child {
-		padding-top: 6px;
-	}
-	li + li .row::before {
-		content: '';
-		position: absolute;
-		top: 0;
-		left: calc(60px + var(--level, 0) * 28px);
-		right: 0;
-		border-top: 0.5px solid var(--line);
+	.monthlist {
+		padding-bottom: var(--ruimte-2);
 	}
 	.row {
 		position: relative;
-		padding: 13px 16px;
+		margin: 0 var(--ruimte-2);
+		padding: var(--ruimte-3) var(--ruimte-4);
+		border-radius: var(--vorm-lg);
 		transition: background-color 0.15s;
 	}
 	.row:hover {
@@ -211,12 +222,12 @@
 		padding-left: calc(var(--level, 0) * 28px);
 	}
 	.row.parent .names strong {
-		font-weight: 650;
+		font-weight: 600;
 	}
 	.who {
 		display: flex;
 		align-items: center;
-		gap: 12px;
+		gap: var(--ruimte-3);
 		min-width: 0;
 	}
 	.names {
@@ -230,12 +241,12 @@
 		white-space: nowrap;
 	}
 	.names strong {
-		font-weight: 560;
+		font: 600 15px/22px var(--tekst-familie);
 	}
 	.progress {
 		display: flex;
 		flex-direction: column;
-		gap: 5px;
+		gap: var(--ruimte-1);
 		min-width: 0;
 	}
 	.bar.quiet > span {
@@ -254,9 +265,7 @@
 		color: var(--muted);
 	}
 	.bal {
-		font-size: 16px;
-		font-weight: 650;
-		letter-spacing: -0.015em;
+		font-weight: 600;
 	}
 	.figs {
 		display: none;
@@ -268,15 +277,15 @@
 			display: none;
 		}
 		.cols {
-			grid-template-columns: 1fr auto 16px;
+			grid-template-columns: 1fr auto;
 			grid-template-areas:
-				'who bal chev'
-				'progress progress progress'
-				'figs figs figs';
-			gap: 6px 12px;
+				'who bal'
+				'progress progress'
+				'figs figs';
+			gap: var(--ruimte-2) var(--ruimte-3);
 		}
 		.ghead {
-			grid-template-areas: 'who bal chev';
+			grid-template-areas: 'who bal';
 		}
 		.ghead > span:nth-child(2),
 		.budgeted,
@@ -290,13 +299,9 @@
 		.gbal {
 			grid-area: bal;
 		}
-		.row > :global(svg),
-		.ghead > :global(svg) {
-			grid-area: chev;
-		}
 		.progress {
 			grid-area: progress;
-			padding-left: calc(44px + var(--level, 0) * 28px);
+			padding-left: calc(46px + var(--level, 0) * 28px);
 		}
 		.progress:empty {
 			display: none;
@@ -304,8 +309,8 @@
 		.figs {
 			grid-area: figs;
 			display: flex;
-			gap: 12px;
-			padding-left: calc(44px + var(--level, 0) * 28px);
+			gap: var(--ruimte-3);
+			padding-left: calc(46px + var(--level, 0) * 28px);
 		}
 		.figs:empty {
 			display: none;

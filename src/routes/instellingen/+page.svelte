@@ -4,16 +4,20 @@
 
 	let { data } = $props();
 
+	const tint = (h: string) =>
+		h === 'accent' ? '--tint: var(--accent-zacht); --tint-fg: var(--accent-standaard)' : `--tint: var(--categorie-${h}-zacht); --tint-fg: var(--categorie-${h}-tekst)`;
+
 	const ITEMS = $derived([
-		{ href: '/instellingen/budgetten', icon: 'folder', title: 'Budgetten', sub: `${data.budgets} budgetten · aanmaken, opties en indeling` },
-		{ href: '/instellingen/regels', icon: 'list', title: 'Regels', sub: `${data.rules} eigen regels voor automatisch indelen` },
-		{ href: '/instellingen/rekeningen', icon: 'card', title: 'Rekeningen', sub: `${data.accounts} ${data.accounts === 1 ? 'rekening' : 'rekeningen'}` },
-		{ href: '/instellingen/account', icon: 'shield', title: 'Account', sub: 'Uitloggen en bepalen wie toegang heeft' },
-		{ href: '/instellingen/backup', icon: 'upload', title: 'Back-up', sub: 'Al je gegevens bewaren in één bestand of terugzetten' },
-		{ href: '/welkom', icon: 'start', title: 'Introductie', sub: 'Loop de eerste stappen met Stax nog eens door' },
+		{ href: '/instellingen/budgetten', icon: 'folder', hue: 'accent', title: 'Budgetten', sub: `${data.budgets} budgetten · aanmaken, opties en indeling` },
+		{ href: '/instellingen/regels', icon: 'list', hue: 'lucht', title: 'Regels', sub: `${data.rules} eigen regels voor automatisch indelen` },
+		{ href: '/instellingen/rekeningen', icon: 'card', hue: 'mint', title: 'Rekeningen', sub: `${data.accounts} ${data.accounts === 1 ? 'rekening' : 'rekeningen'}` },
+		{ href: '/instellingen/account', icon: 'shield', hue: 'zon', title: 'Account', sub: 'Uitloggen en bepalen wie toegang heeft' },
+		{ href: '/instellingen/backup', icon: 'upload', hue: 'lucht', title: 'Back-up', sub: 'Al je gegevens bewaren in één bestand of terugzetten' },
+		{ href: '/welkom', icon: 'start', hue: 'koraal', title: 'Introductie', sub: 'Loop de eerste stappen met Stax nog eens door' },
 		{
 			href: '/instellingen/start',
 			icon: 'goal',
+			hue: 'accent',
 			title: 'Startsaldo',
 			sub: data.startdatum ? `Spaarsaldi tellen vanaf ${shortDate(data.startdatum)}` : 'Nog niet ingesteld'
 		}
@@ -28,7 +32,7 @@
 		{#each ITEMS as it (it.href)}
 			<li>
 				<a class="item" href={it.href}>
-					<span class="avatar sm"><Icon name={it.icon} size={18} /></span>
+					<span class="tegel" style={tint(it.hue)}><Icon name={it.icon} size={20} /></span>
 					<span class="names">
 						<strong>{it.title}</strong>
 						<span class="muted small">{it.sub}</span>
@@ -48,19 +52,31 @@
 		padding: 0;
 		max-width: 720px;
 		overflow: hidden;
+		padding: var(--ruimte-2);
 	}
 	.item {
 		display: flex;
 		align-items: center;
-		gap: 14px;
-		padding: 12px 18px;
+		position: relative;
+		gap: var(--ruimte-4);
+		padding: var(--ruimte-3) var(--ruimte-4);
+		border-radius: var(--vorm-lg);
 		transition: background-color 0.15s;
 	}
 	.item:hover {
 		background: var(--surface-2);
 	}
-	li + li .item {
-		border-top: 0.5px solid var(--line);
+	li + li .item::before {
+		content: '';
+		position: absolute;
+		top: 0;
+		left: var(--ruimte-4);
+		right: var(--ruimte-4);
+		border-top: 1px solid var(--line);
+	}
+	.item:hover::before,
+	li:hover + li .item::before {
+		opacity: 0;
 	}
 	.names {
 		flex: 1;
@@ -69,6 +85,16 @@
 	}
 	.names strong {
 		font-weight: 600;
+	}
+	.tegel {
+		flex: none;
+		display: grid;
+		place-items: center;
+		width: 40px;
+		height: 40px;
+		border-radius: var(--vorm-lg);
+		background: var(--tint);
+		color: var(--tint-fg);
 	}
 	.item > :global(svg:last-child) {
 		color: var(--faint);

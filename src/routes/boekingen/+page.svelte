@@ -6,6 +6,7 @@
 	import CategoryCombo from '$lib/components/CategoryCombo.svelte';
 	import CategoryPicker from '$lib/components/CategoryPicker.svelte';
 	import Icon from '$lib/components/Icon.svelte';
+	import { Chip, Knop, Segmentbalk, Zoekveld } from 'vertex/web';
 	import { dayLabel, money, moneyInput, monthName, parseMoney, shortDate } from '$lib/format';
 	import type { CatOption } from '$lib/types';
 	import type { Row } from './+page.server';
@@ -55,6 +56,12 @@
 		if (window.innerWidth < 860) view = 'lijst';
 		else view = saved === 'lijst' || saved === 'tabel' ? saved : 'tabel';
 	});
+	const statusOpties = $derived([
+		{ waarde: 'alles', label: 'Alles' },
+		{ waarde: 'open', label: 'Nog indelen', teller: data.openCount || null },
+		...(data.refunds.length || data.filters.status === 'terug' ? [{ waarde: 'terug', label: 'Terug verwacht', teller: data.refunds.length || null }] : [])
+	]);
+
 	function setView(v: 'lijst' | 'tabel') {
 		view = v;
 		try {
@@ -255,12 +262,12 @@
 		open(fresh);
 	}
 
-	function chipFor(row: Row): { text: string; kind: string } {
-		if (row.status === 'uitgesloten') return { text: 'Telt niet mee', kind: '' };
-		if (row.status === 'overboeking') return { text: 'Overboeking', kind: '' };
-		if (row.status === 'open') return { text: row.needsPot ? 'Kies een budget' : 'Indelen', kind: 'warn' };
-		if (row.splits.length > 1) return { text: `${row.splits.length} delen`, kind: 'accent' };
-		return { text: labels.get(row.splits[0].category_id) ?? '?', kind: 'accent' };
+	function chipFor(row: Row): { text: string; toon: 'accent' | 'waarschuwing' | 'neutraal' } {
+		if (row.status === 'uitgesloten') return { text: 'Telt niet mee', toon: 'neutraal' };
+		if (row.status === 'overboeking') return { text: 'Overboeking', toon: 'neutraal' };
+		if (row.status === 'open') return { text: row.needsPot ? 'Kies een budget' : 'Indelen', toon: 'waarschuwing' };
+		if (row.splits.length > 1) return { text: `${row.splits.length} delen`, toon: 'accent' };
+		return { text: labels.get(row.splits[0].category_id) ?? '?', toon: 'accent' };
 	}
 
 	// Bij een overboeking tussen eigen rekeningen is de tegenpartij jullie eigen naam; de omschrijving zegt meer.
@@ -280,39 +287,32 @@
 
 <svelte:head><title>Boekingen · Stax</title></svelte:head>
 
-<div class="stack">
+{#snippet uploadIcoon()}<Icon name="upload" size={18} />{/snippet}
+{#snippet zoekIcoon()}<Icon name="search" size={18} />{/snippet}
+
+<div class="stack boek">
 	<header class="top">
 		<h1>Boekingen</h1>
-		<div class="seg viewtoggle" role="group" aria-label="Weergave">
-			<button type="button" aria-pressed={view === 'lijst'} onclick={() => setView('lijst')}>Lijst</button>
-			<button type="button" aria-pressed={view === 'tabel'} onclick={() => setView('tabel')}>Tabel</button>
+		<div class="viewtoggle">
+			<Segmentbalk label="Weergave" waarde={view} opties={[{ waarde: 'lijst', label: 'Lijst' }, { waarde: 'tabel', label: 'Tabel' }]} onkies={(v) => setView(v as 'lijst' | 'tabel')} />
 		</div>
-		<a class="btn" href="/upload"><Icon name="upload" size={18} /> Upload</a>
+		<div class="upload"><Knop href="/upload" icoon={uploadIcoon}>Upload</Knop></div>
 	</header>
 
 	<div class="toolbar">
-		<div class="seg" role="group" aria-label="Welke boekingen">
-			<button type="button" aria-pressed={data.filters.status !== 'open' && data.filters.status !== 'terug'} onclick={() => setFilter('status', null)}>Alles</button>
-			<button type="button" aria-pressed={data.filters.status === 'open'} onclick={() => setFilter('status', 'open')}>
-				Nog indelen {#if data.openCount}<b>{data.openCount}</b>{/if}
-			</button>
-			{#if data.refunds.length || data.filters.status === 'terug'}
-				<button type="button" aria-pressed={data.filters.status === 'terug'} onclick={() => setFilter('status', 'terug')}>
-					Terug verwacht {#if data.refunds.length}<b>{data.refunds.length}</b>{/if}
-				</button>
-			{/if}
-		</div>
+		<Segmentbalk
+			label="Welke boekingen"
+			waarde={data.filters.status === 'open' || data.filters.status === 'terug' ? data.filters.status : 'alles'}
+			opties={statusOpties}
+			onkies={(v) => setFilter('status', v === 'alles' ? null : v)}
+		/>
 		{#if view === 'tabel'}
 			<label class="check small learn"><input type="checkbox" bind:checked={learn} /> Vergelijkbare boekingen meteen mee indelen</label>
 		{/if}
 	</div>
 
 	<div class="filters">
-		<label class="searchbox">
-			<Icon name="search" size={18} />
-			<span class="sr-only">Zoeken</span>
-			<input type="search" placeholder="Zoek op naam, omschrijving of bedrag" bind:value={search} oninput={onSearch} />
-		</label>
+		<Zoekveld class="searchbox" icoon={zoekIcoon} placeholder="Zoek op naam, omschrijving of bedrag" bind:value={search} oninput={onSearch} />
 		<select aria-label="Maand" value={data.filters.month ?? 'alle'} onchange={(e) => setFilter('maand', e.currentTarget.value)}>
 			<option value="alle">Alle maanden</option>
 			{#each data.months as m}<option value={m}>{monthName(m)}</option>{/each}
@@ -324,14 +324,10 @@
 		{#if data.filters.cat || data.filters.van}
 			<div class="filterchips">
 				{#if data.filters.van}
-					<button type="button" class="chip accent filterchip" onclick={() => setFilter('van', null)}>
-						Van: {data.filters.van} <Icon name="x" size={14} />
-					</button>
+					<Chip toon="accent" onclick={() => setFilter('van', null)}>Van: {data.filters.van} <Icon name="x" size={14} /></Chip>
 				{/if}
 				{#if data.filters.cat}
-					<button type="button" class="chip accent filterchip" onclick={() => setFilter('map', null)}>
-						Budget: {labels.get(data.filters.cat)} <Icon name="x" size={14} />
-					</button>
+					<Chip toon="accent" onclick={() => setFilter('map', null)}>Budget: {labels.get(data.filters.cat)} <Icon name="x" size={14} /></Chip>
 				{/if}
 			</div>
 		{/if}
@@ -380,11 +376,11 @@
 							<td class="muted small">{accountName.get(row.account_id)}</td>
 							<td class="cat">
 								{#if row.status === 'overboeking'}
-									<span class="chip">Overboeking</span>
+									<Chip>Overboeking</Chip>
 								{:else if row.status === 'uitgesloten'}
-									<button type="button" class="plain chip" onclick={() => openFromList(row)}>Telt niet mee</button>
+									<Chip onclick={() => openFromList(row)}>Telt niet mee</Chip>
 								{:else if row.splits.length > 1}
-									<button type="button" class="plain chip accent" onclick={() => openFromList(row)}>{row.splits.length} delen</button>
+									<Chip toon="accent" onclick={() => openFromList(row)}>{row.splits.length} delen</Chip>
 								{:else}
 									<CategoryCombo
 										variant="inline"
@@ -431,11 +427,11 @@
 					onchange={(id) => (bulkCat = id ? String(id) : '')}
 				/>
 			</div>
-			<button type="button" class="primary" disabled={!bulkCat} onclick={() => bulk({ category_id: bulkCat })}>Toepassen</button>
-			<button type="button" onclick={() => bulk({ excluded: '1' })}>Niet meetellen</button>
-			<button type="button" onclick={() => bulk({ uit_pot: '0' })} title="Telt mee als uitgegeven, maar het saldo blijft staan">Niet van het saldo</button>
-			<button type="button" onclick={() => bulk({ uit_pot: '1' })}>Wel van het saldo</button>
-			<button type="button" class="ghost" onclick={() => (selected = new Set())}>Wissen</button>
+			<Knop variant="primair" disabled={!bulkCat} onclick={() => bulk({ category_id: bulkCat })}>Toepassen</Knop>
+			<Knop onclick={() => bulk({ excluded: '1' })}>Niet meetellen</Knop>
+			<Knop onclick={() => bulk({ uit_pot: '0' })} title="Telt mee als uitgegeven, maar het saldo blijft staan">Niet van het saldo</Knop>
+			<Knop onclick={() => bulk({ uit_pot: '1' })}>Wel van het saldo</Knop>
+			<Knop variant="tertiair" onclick={() => (selected = new Set())}>Wissen</Knop>
 		</div>
 	{/if}
 
@@ -457,7 +453,7 @@
 							</span>
 							<span class="side">
 								<span class="num amount" class:pos={row.amount_cents > 0}>{money(row.amount_cents)}</span>
-								<span class="chip {chip.kind}">{chip.text}</span>
+								<Chip toon={chip.toon}>{chip.text}</Chip>
 							</span>
 						</button>
 					</li>
@@ -712,6 +708,9 @@
 </dialog>
 
 <style>
+	.boek {
+		gap: var(--ruimte-5);
+	}
 	.top {
 		display: flex;
 		align-items: center;
@@ -730,7 +729,7 @@
 		}
 	}
 	@media (max-width: 600px) {
-		.top > .btn {
+		.top > .upload {
 			display: none;
 		}
 	}
@@ -740,41 +739,67 @@
 		justify-content: space-between;
 		gap: 12px;
 		flex-wrap: wrap;
-		margin-top: -12px;
 	}
 	.learn {
 		color: var(--muted);
 	}
 	.tablewrap {
 		overflow-x: auto;
+		padding: 0 var(--ruimte-2) var(--ruimte-2);
 	}
 	.tx {
 		width: 100%;
 		border-collapse: collapse;
-		font-size: 14px;
+		font-size: 15px;
 	}
 	.tx th {
 		position: sticky;
 		top: 0;
 		background: var(--surface);
 		text-align: left;
-		font-weight: 500;
-		font-size: 12.5px;
+		font-weight: 600;
+		font-size: 12px;
 		color: var(--muted);
-		padding: 12px 10px;
+		padding: var(--ruimte-3) 7px;
 		border-bottom: 0.5px solid var(--line);
 		white-space: nowrap;
 	}
 	.tx td {
-		padding: 8px 10px;
-		border-bottom: 0.5px solid var(--line);
+		position: relative;
+		padding: var(--ruimte-3) 7px;
 		vertical-align: middle;
+	}
+	/* Scheidingslijn onder een rij; verdwijnt bij hover op die rij en op de rij eronder. */
+	.tx td::after {
+		content: '';
+		position: absolute;
+		left: 0;
+		right: 0;
+		bottom: 0;
+		border-bottom: 1px solid var(--line);
+	}
+	.tx td:first-child::after {
+		left: var(--ruimte-4);
+	}
+	.tx td:last-child::after {
+		right: var(--ruimte-4);
+	}
+	.tx tbody tr:hover > td::after,
+	.tx tbody tr:has(+ tr:hover) > td::after,
+	.tx tbody tr:last-child td::after {
+		opacity: 0;
 	}
 	.tx tbody tr {
 		transition: background-color 0.12s;
 	}
-	.tx tbody tr:hover {
+	.tx tbody tr:hover > td {
 		background: var(--surface-2);
+	}
+	.tx tbody tr:hover > td:first-child {
+		border-radius: var(--vorm-lg) 0 0 var(--vorm-lg);
+	}
+	.tx tbody tr:hover > td:last-child {
+		border-radius: 0 var(--vorm-lg) var(--vorm-lg) 0;
 	}
 	.tx tr.sel {
 		background: var(--accent-soft);
@@ -787,8 +812,12 @@
 		border-bottom: 0;
 	}
 	.tx .cb {
-		width: 44px;
-		padding-left: 16px;
+		width: 48px;
+		padding-left: var(--ruimte-5);
+	}
+	.tx th:last-child,
+	.tx td:last-child {
+		padding-right: var(--ruimte-5);
 	}
 	.tx .r {
 		text-align: right;
@@ -886,27 +915,13 @@
 		flex: 1;
 		min-width: 260px;
 	}
-	.seg b {
-		font-size: 12px;
-		color: var(--warn);
-	}
 	.filters {
 		display: grid;
 		grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
-		gap: 8px;
+		gap: var(--ruimte-3);
 	}
-	.searchbox {
+	.filters :global(.searchbox) {
 		grid-column: 1 / -1;
-		position: relative;
-		color: var(--muted);
-	}
-	.searchbox :global(svg) {
-		position: absolute;
-		left: 11px;
-		top: 11px;
-	}
-	.searchbox input {
-		padding-left: 36px;
 	}
 	.filterchips {
 		grid-column: 1 / -1;
@@ -914,16 +929,11 @@
 		gap: 8px;
 		flex-wrap: wrap;
 	}
-	.filterchip {
-		border: 0;
-		min-height: 28px;
-		cursor: pointer;
-	}
 	@media (min-width: 700px) {
 		.filters {
 			grid-template-columns: minmax(0, 1fr) 180px 180px;
 		}
-		.searchbox {
+		.filters :global(.searchbox) {
 			grid-column: auto;
 		}
 	}
@@ -938,11 +948,23 @@
 	.list {
 		list-style: none;
 		margin: 0;
-		padding: 0;
+		padding: var(--ruimte-2);
 		overflow: hidden;
 	}
-	.list li + li {
+	.list li {
+		position: relative;
+	}
+	.list li + li::before {
+		content: '';
+		position: absolute;
+		top: 0;
+		left: var(--ruimte-4);
+		right: var(--ruimte-4);
 		border-top: 1px solid var(--line);
+	}
+	.list li:hover::before,
+	.list li:hover + li::before {
+		opacity: 0;
 	}
 	.row {
 		width: 100%;
@@ -951,13 +973,16 @@
 		justify-content: space-between;
 		gap: 12px;
 		min-height: 60px;
-		padding: 10px 14px;
+		padding: 14px var(--ruimte-4);
 		border: 0;
-		border-radius: 0;
+		border-radius: var(--vorm-lg);
 		background: transparent;
 		font-weight: 400;
 		text-align: left;
 		white-space: normal;
+	}
+	.row:hover {
+		background: var(--surface-2);
 	}
 	.row.dim .who,
 	.row.dim .amount {

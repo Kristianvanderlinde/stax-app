@@ -37,6 +37,7 @@ export function load({ url }) {
 					effFunding: node.effFunding,
 					icon: node.icon,
 					effIcon: node.effIcon,
+					color: node.color,
 					goal_cents: node.goal_cents,
 					goal_date: node.goal_date,
 					bookings: bookings.get(node.id) ?? 0,

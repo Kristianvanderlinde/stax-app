@@ -50,7 +50,7 @@
 			ondragleave={() => (dragging = false)}
 			ondrop={drop}
 		>
-			<Icon name="upload" size={28} />
+			<span class="drop-icon"><Icon name="upload" size={32} /></span>
 			<strong>{busy ? 'Bezig met inlezen…' : 'Sleep bankbestanden hierheen'}</strong>
 			<span class="muted small">of tik om bestanden te kiezen</span>
 			<input
@@ -116,17 +116,25 @@
 </div>
 
 <style>
+	header {
+		display: flex;
+		flex-direction: column;
+		gap: var(--ruimte-3);
+	}
 	header p {
-		margin: 6px 0 0;
-		max-width: 60ch;
+		margin: 0;
+		max-width: 720px;
+	}
+	form {
+		max-width: 720px;
 	}
 	.drop {
 		display: flex;
 		flex-direction: column;
 		align-items: center;
-		gap: 6px;
-		padding: 40px 16px;
-		border: 1.5px dashed var(--line);
+		gap: var(--ruimte-2);
+		padding: 48px var(--ruimte-4);
+		border: 2px dashed var(--accent-standaard);
 		box-shadow: none;
 		cursor: pointer;
 		text-align: center;
@@ -134,6 +142,17 @@
 	}
 	.drop strong {
 		color: var(--text);
+		font: 600 17px/24px var(--tekst-familie);
+	}
+	.drop-icon {
+		display: grid;
+		place-items: center;
+		width: 64px;
+		height: 64px;
+		margin-bottom: var(--ruimte-2);
+		border-radius: 18px;
+		background: var(--verloop-accent);
+		color: var(--tekst-op-accent);
 	}
 	.drop.dragging,
 	.drop:hover {

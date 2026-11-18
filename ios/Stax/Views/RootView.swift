@@ -21,19 +21,31 @@ struct RootView: View {
 	var body: some View {
 		TabView(selection: $tab) {
 			OverviewView(openCount: $openCount, showBookings: { tab = .bookings })
-				.tabItem { Label("Overzicht", image: "nav-start") }
+				.toolbar(.hidden, for: .tabBar)
 				.tag(Tab.overview)
 			SavingsView()
-				.tabItem { Label("Sparen", image: "nav-piggy") }
+				.toolbar(.hidden, for: .tabBar)
 				.tag(Tab.savings)
 			BookingsView(openCount: $openCount)
-				.tabItem { Label("Boekingen", image: "nav-list") }
-				.badge(openCount)
+				.toolbar(.hidden, for: .tabBar)
 				.tag(Tab.bookings)
 			SettingsView()
-				.tabItem { Label("Instellingen", image: "nav-settings") }
+				.toolbar(.hidden, for: .tabBar)
 				.tag(Tab.settings)
 		}
+		.overlay(alignment: .bottom) {
+			VertexTabbalk(
+				items: [
+					.init(tab: Tab.overview, titel: "Overzicht", icoon: "nav-start"),
+					.init(tab: Tab.savings, titel: "Sparen", icoon: "nav-piggy"),
+					.init(tab: Tab.bookings, titel: "Boekingen", icoon: "nav-list", teller: openCount),
+					.init(tab: Tab.settings, titel: "Instellingen", icoon: "nav-settings")
+				],
+				gekozen: $tab
+			)
+			.ignoresSafeArea(.keyboard)
+		}
+		.vertexMenuHost()
 		.fullScreenCover(isPresented: Binding(get: { session.showIntro }, set: { session.showIntro = $0 })) { OnboardingView() }
 	}
 }
@@ -49,61 +61,50 @@ struct SettingsView: View {
 	var body: some View {
 		@Bindable var session = session
 		NavigationStack {
-			Form {
-				Section {
-					NavigationLink { OrderView() } label: { SettingsRow(icon: "nav-folder", title: "Budgetten", subtitle: "Aanmaken, bewerken en op volgorde zetten") }
-					NavigationLink { RulesView() } label: { SettingsRow(icon: "nav-list", title: "Regels", subtitle: "Automatisch indelen") }
-					NavigationLink { AccountsView() } label: { SettingsRow(icon: "nav-card", title: "Rekeningen", subtitle: "Naam en soort") }
+			VertexScherm(titel: "Instellingen", gloed: false) {
+				VSection {
+					VNavigationLink { OrderView() } label: { SettingsRow(icon: "nav-folder", title: "Budgetten", subtitle: "Aanmaken, bewerken en op volgorde zetten") }
+					VNavigationLink { RulesView() } label: { SettingsRow(icon: "nav-list", title: "Regels", subtitle: "Automatisch indelen") }
+					VNavigationLink { AccountsView() } label: { SettingsRow(icon: "nav-card", title: "Rekeningen", subtitle: "Naam en soort") }
 					if session.local == nil {
-						NavigationLink { AccountView() } label: { SettingsRow(icon: "icon-shield", title: "Account", subtitle: "Toegang en telefoons") }
+						VNavigationLink { AccountView() } label: { SettingsRow(icon: "icon-shield", title: "Account", subtitle: "Toegang en telefoons") }
 					}
-					NavigationLink { BackupView() } label: { SettingsRow(icon: "nav-upload", title: "Back-up", subtitle: "Al je gegevens bewaren of terugzetten") }
-					NavigationLink { StartView() } label: { SettingsRow(icon: "nav-goal", title: "Startsaldo", subtitle: "Startdatum en saldo per budget") }
-					Button { session.showIntro = true } label: { SettingsRow(icon: "nav-start", title: "Introductie", subtitle: "Loop de eerste stappen nog eens door") }
-						.buttonStyle(.plain)
+					VNavigationLink { BackupView() } label: { SettingsRow(icon: "nav-upload", title: "Back-up", subtitle: "Al je gegevens bewaren of terugzetten") }
+					VNavigationLink { StartView() } label: { SettingsRow(icon: "nav-goal", title: "Startsaldo", subtitle: "Startdatum en saldo per budget") }
+					VKnopRij(actie: { session.showIntro = true }) { SettingsRow(icon: "nav-start", title: "Introductie", subtitle: "Loop de eerste stappen nog eens door") }
 				}
 				if session.local == nil {
-					Section {
-						LabeledContent("Ingelogd als", value: session.user)
-						LabeledContent("Server", value: session.server.host() ?? session.server.absoluteString)
+					VSection {
+						VWaarde("Ingelogd als", value: session.user)
+						VWaarde("Server", value: session.server.host() ?? session.server.absoluteString)
 					}
 				} else {
-					Section {
-						LabeledContent("Gegevens", value: "Op deze telefoon")
+					VSection {
+						VWaarde("Gegevens", value: "Op deze telefoon")
 					} footer: {
 						Text("Verwijder je de app, dan zijn je gegevens weg. Maak daarom regelmatig een back-up.")
 					}
-					Section {
-						Button("Gegevens wissen en opnieuw kiezen", role: .destructive) { confirmLeave = true }
-							.confirmationDialog("Alle gegevens op deze telefoon wissen?", isPresented: $confirmLeave, titleVisibility: .visible) {
-								Button("Alles wissen", role: .destructive) { session.leaveLocal() }
-								Button("Annuleren", role: .cancel) {}
-							} message: {
-								Text("Je keert terug naar het keuzescherm (lokaal of server). Maak eerst een back-up als je de gegevens wilt houden.")
-							}
-					}
 				}
-				Section {
+				VSection {
 					Toggle("Openen met Face ID", isOn: $session.faceID)
 				} footer: {
 					Text("Na een minuut op de achtergrond vraagt Stax opnieuw om Face ID.")
 				}
 				if session.local == nil {
-					Section {
+					VSection {
 						Link(destination: session.server) {
-							Label("Stax openen in Safari", systemImage: "safari")
+							Label("Stax openen in Safari", vSym: "safari")
 						}
 					}
-					Section {
-						// De bevestiging hoort bij de knop zelf, zodat hij ook op iPad bij de knop verschijnt.
-						Button("Uitloggen", role: .destructive) { confirm = true }
-							.confirmationDialog("Uitloggen op deze telefoon?", isPresented: $confirm, titleVisibility: .visible) {
-								Button("Uitloggen", role: .destructive) { session.signOut() }
-							}
-					}
+					Button("Uitloggen") { confirm = true }
+						.buttonStyle(VertexDestructieveKnop())
+						.vertexBevestiging("Uitloggen op deze telefoon?", isPresented: $confirm, knop: "Uitloggen") { session.signOut() }
+				} else {
+					Button("Gegevens wissen en opnieuw kiezen") { confirmLeave = true }
+						.buttonStyle(VertexDestructieveKnop())
+						.vertexBevestiging("Alle gegevens op deze telefoon wissen?", bericht: "Je keert terug naar het keuzescherm (lokaal of server). Maak eerst een back-up als je de gegevens wilt houden.", isPresented: $confirmLeave, knop: "Alles wissen") { session.leaveLocal() }
 				}
 			}
-			.navigationTitle("Instellingen")
 			#if DEBUG
 			.navigationDestination(item: $debugSub) { name in
 				switch name {

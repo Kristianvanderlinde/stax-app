@@ -34,30 +34,36 @@ struct BookingsView: View {
 					try await api.get("boekingen", ["status": filter.status, "maand": filter == .all && searched.isEmpty ? month : nil, "q": searched.isEmpty ? nil : searched])
 				}
 			) { (data: Bookings) in
-				List {
-					Section {
-						Picker("Filter", selection: $filter) {
-							ForEach(Filter.allCases, id: \.self) { Text($0.rawValue) }
+				VertexScherm(
+					titel: "Boekingen", gloed: false,
+					acties: AnyView(
+						HStack(spacing: 8) {
+							if filter == .all {
+								MonthMenu(months: data.months, month: Binding(get: { month ?? data.months.first }, set: { month = $0 }), allowAll: true)
+							}
+							VertexIcoonknop(systeemIcoon: "plus", label: "Bankexport uploaden") { importing = true }
 						}
-						.pickerStyle(.segmented)
-						.listRowInsets(EdgeInsets())
-						.listRowBackground(Color.clear)
-					}
-					Section {
-						if data.rows.isEmpty {
-							ContentUnavailableView(
-								filter == .open ? "Alles is ingedeeld" : "Geen boekingen",
-								systemImage: filter == .open ? "checkmark.circle" : "tray",
-								description: Text(filter == .open ? "Nieuwe boekingen komen hier zodra je een afschrift uploadt." : "")
-							)
+					)
+				) {
+					VertexZoekveld(prompt: "Zoek op naam, omschrijving of bedrag", tekst: $query) { searched = query }
+					VertexSegmentbalk(opties: Filter.allCases.map { ($0, $0.rawValue) }, waarde: $filter)
+					if data.rows.isEmpty {
+						VStack(spacing: 8) {
+							VSym(filter == .open ? "checkmark.circle" : "tray", 34).foregroundStyle(Vertex.Kleur.tekstVaag)
+							Text(filter == .open ? "Alles is ingedeeld" : "Geen boekingen").vertexTekst(Vertex.Tekst.subkop)
+							if filter == .open {
+								Text("Nieuwe boekingen komen hier zodra je een afschrift uploadt.").vertexTekst(Vertex.Tekst.klein).foregroundStyle(Vertex.Kleur.tekstGedempt).multilineTextAlignment(.center)
+							}
 						}
-						ForEach(data.rows) { row in
-							Button { selected = row } label: { BookingRow(row: row, options: data.options, accounts: data.accounts) }
-								.foregroundStyle(.primary)
+						.frame(maxWidth: .infinity).padding(.vertical, 40)
+					} else {
+						VSection {
+							ForEach(data.rows) { row in
+								VKnopRij(actie: { selected = row }) { BookingRow(row: row, options: data.options, accounts: data.accounts) }
+							}
 						}
 					}
 				}
-				.listStyle(.insetGrouped)
 				.onAppear {
 					if filter == .open && searched.isEmpty { openCount = data.rows.count }
 					#if DEBUG
@@ -65,26 +71,12 @@ struct BookingsView: View {
 					#endif
 				}
 				.onChange(of: data.rows) { _, rows in if filter == .open && searched.isEmpty { openCount = rows.count } }
-				.toolbar {
-					ToolbarItem(placement: .topBarTrailing) {
-						Button { importing = true } label: { Image(systemName: "plus") }
-							.accessibilityLabel("Bankexport uploaden")
-					}
-					if filter == .all {
-						ToolbarItem(placement: .topBarTrailing) {
-							MonthMenu(months: data.months, month: Binding(get: { month ?? data.months.first }, set: { month = $0 }), allowAll: true)
-						}
-					}
-				}
+				.onChange(of: query) { _, q in if q.isEmpty { searched = "" } }
 				.sheet(isPresented: $importing) { ImportSheet() }
 				.sheet(item: $selected) { row in
 					ClassifyView(row: row, data: data, queue: data.rows) { selected = nil }
 				}
 			}
-			.navigationTitle("Boekingen")
-			.searchable(text: $query, prompt: "Zoek op naam, omschrijving of bedrag")
-			.onSubmit(of: .search) { searched = query }
-			.onChange(of: query) { _, q in if q.isEmpty { searched = "" } }
 		}
 	}
 }
@@ -102,45 +94,40 @@ struct BookingRow: View {
 		return row.counterparty != nil ? row.description : ""
 	}
 
-	private var chip: (String, Color) {
+	private var chip: (String, VertexChip.Toon) {
 		switch row.status {
-		case "uitgesloten": return ("Telt niet mee", .secondary)
-		case "overboeking": return ("Overboeking", .secondary)
-		case "open": return (row.needsPot ? "Kies een budget" : "Indelen", .orange)
+		case "uitgesloten": return ("Telt niet mee", .neutraal)
+		case "overboeking": return ("Overboeking", .neutraal)
+		case "open": return (row.needsPot ? "Kies een budget" : "Indelen", .waarschuwing)
 		default:
-			if row.splits.count > 1 { return ("\(row.splits.count) delen", .stax) }
-			return (options.first { $0.id == row.splits.first?.categoryId }?.name ?? "?", .stax)
+			if row.splits.count > 1 { return ("\(row.splits.count) delen", .accent) }
+			return (options.first { $0.id == row.splits.first?.categoryId }?.name ?? "?", .accent)
 		}
 	}
 
 	var body: some View {
 		HStack(alignment: .top, spacing: 12) {
 			VStack(alignment: .leading, spacing: 3) {
-				Text(row.title).lineLimit(1)
+				Text(row.title).vertexTekst(Vertex.Tekst.bodyVet).foregroundStyle(Vertex.Kleur.tekstHoofd).lineLimit(1)
 				if !subtitle.isEmpty {
-					Text(subtitle).font(.caption).foregroundStyle(.secondary).lineLimit(1)
+					Text(subtitle).vertexTekst(Vertex.Tekst.klein).foregroundStyle(Vertex.Kleur.tekstGedempt).lineLimit(1)
 				}
 				HStack(spacing: 6) {
-					Text(chip.0)
-						.font(.caption.weight(.semibold))
-						.padding(.horizontal, 8)
-						.padding(.vertical, 2)
-						.background(chip.1.opacity(0.12), in: Capsule())
-						.foregroundStyle(chip.1)
+					VertexChip(tekst: chip.0, toon: chip.1)
 					if row.refundLeft > 0 {
-						Text("\(Format.money(row.refundLeft)) terug verwacht").font(.caption).foregroundStyle(.secondary)
+						Text("\(Format.money(row.refundLeft)) terug verwacht").vertexTekst(Vertex.Tekst.klein).foregroundStyle(Vertex.Kleur.tekstGedempt)
 					}
 					if let source = row.refundSource {
-						Text("Teruggave van \(source.name)").font(.caption).foregroundStyle(.secondary).lineLimit(1)
+						Text("Teruggave van \(source.name)").vertexTekst(Vertex.Tekst.klein).foregroundStyle(Vertex.Kleur.tekstGedempt).lineLimit(1)
 					}
 				}
 			}
 			Spacer(minLength: 8)
 			VStack(alignment: .trailing, spacing: 3) {
 				Text(Format.money(row.amountCents))
-					.font(.body.weight(.semibold).monospacedDigit())
-					.foregroundStyle(row.amountCents > 0 ? .green : .primary)
-				Text(Format.date(row.bookingDate)).font(.caption).foregroundStyle(.secondary)
+					.vertexTekst(Vertex.Tekst.bodyVet).monospacedDigit()
+					.foregroundStyle(row.amountCents > 0 ? Vertex.Kleur.statusPositief : Vertex.Kleur.tekstHoofd)
+				Text(Format.date(row.bookingDate)).vertexTekst(Vertex.Tekst.klein).foregroundStyle(Vertex.Kleur.tekstGedempt)
 			}
 		}
 		.padding(.vertical, 2)

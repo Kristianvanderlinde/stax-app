@@ -1,9 +1,10 @@
 import { fail } from '@sveltejs/kit';
 import { db } from '$lib/server/db';
-import { accounts } from '$lib/server/reports';
+import { accountBalance, accounts, lastBookingDate } from '$lib/server/reports';
 
 export function load() {
-	return { accounts: accounts() };
+	const balanceDate = lastBookingDate() ?? new Date().toISOString().slice(0, 10);
+	return { balanceDate, accounts: accounts().map((a) => ({ ...a, balance: accountBalance(a.id, balanceDate) })) };
 }
 
 export const actions = {

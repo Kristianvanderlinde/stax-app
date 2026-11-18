@@ -9,16 +9,27 @@ struct SettingsRow: View {
 	let title: String
 	let subtitle: String?
 
+	/// Elk onderdeel heeft zijn eigen kleur, zoals op de website.
+	private var hue: VertexHue {
+		switch icon {
+		case "nav-list": .lucht
+		case "nav-card": .mint
+		case "icon-shield": .zon
+		case "nav-upload": .lucht
+		case "nav-start": .koraal
+		default: .accent
+		}
+	}
+
 	var body: some View {
-		HStack(spacing: 14) {
-			Image(icon).renderingMode(.template).resizable().scaledToFit().frame(width: 18, height: 18)
-				.foregroundStyle(.white).frame(width: 34, height: 34)
-				.background(.staxGradient, in: Circle())
+		HStack(spacing: 12) {
+			VertexTegel(image: Image(icon), hue: hue, maat: 38)
 			VStack(alignment: .leading, spacing: 1) {
-				Text(title).foregroundStyle(.primary)
-				if let subtitle { Text(subtitle).font(.footnote).foregroundStyle(.secondary) }
+				Text(title).vertexTekst(Vertex.Tekst.bodyVet).foregroundStyle(Vertex.Kleur.tekstHoofd)
+				if let subtitle { Text(subtitle).vertexTekst(Vertex.Tekst.klein).foregroundStyle(Vertex.Kleur.tekstGedempt).multilineTextAlignment(.leading) }
 			}
 		}
+		.padding(.vertical, -3)
 	}
 }
 
@@ -29,6 +40,7 @@ private func requestError(_ error: Error) -> String { error.localizedDescription
 /// Bankexport (camt.053-XML of CSV) kiezen en inlezen. Boekingen die er al zijn, worden overgeslagen.
 struct ImportView: View {
 	@Environment(Session.self) private var session
+	@Environment(\.dismiss) private var dismiss
 	@State private var picking = false
 	@State private var busy = false
 	@State private var outcome: ImportOutcome?
@@ -39,56 +51,58 @@ struct ImportView: View {
 
 	var body: some View {
 		Loader(key: "importeren", fetch: { try await $0.get("importeren") as Imports }) { (data: Imports) in
-			List {
-				Section {
-					Button {
-						picking = true
-					} label: {
-						HStack {
-							Label(busy ? "Bezig met inlezen…" : "Bestanden kiezen", systemImage: "square.and.arrow.down")
-							if busy { Spacer(); ProgressView() }
+			VertexScherm(terug: "Instellingen", midden: "Bankexport", gloed: false) {
+				VStack(spacing: 12) {
+					Button { picking = true } label: {
+						VStack(spacing: 12) {
+							Image("nav-upload").renderingMode(.template).resizable().scaledToFit().padding(13)
+								.frame(width: 48, height: 48).foregroundStyle(Vertex.Kleur.tekstOpAccent)
+								.background(Vertex.verloopAccent, in: RoundedRectangle(cornerRadius: 16, style: .continuous))
+							if busy { ProgressView() } else { Text("Kies bestanden").vertexTekst(Vertex.Tekst.subkop).foregroundStyle(Vertex.Kleur.tekstHoofd) }
 						}
+						.frame(maxWidth: .infinity).padding(.vertical, 26)
+						.background(Vertex.Kleur.achtergrondKaart2, in: RoundedRectangle(cornerRadius: 16, style: .continuous))
+						.overlay(RoundedRectangle(cornerRadius: 16, style: .continuous).strokeBorder(Vertex.Kleur.accentStandaard, style: StrokeStyle(lineWidth: 2, dash: [6, 5])))
 					}
+					.buttonStyle(.plain)
 					.disabled(busy)
-				} footer: {
 					Text("Exporteer in de app of op de website van je bank de transacties als XML (camt.053) of CSV en kies de bestanden hier. Meerdere rekeningen tegelijk mag. Boekingen die er al zijn, worden overgeslagen.")
+						.vertexTekst(Vertex.Tekst.klein).foregroundStyle(Vertex.Kleur.tekstGedempt)
 				}
-				if let error {
-					Section { Label(error, systemImage: "exclamationmark.triangle.fill").foregroundStyle(.red) }
-				}
+				.padding(12)
+				.vertexKaart()
+				if let error { VertexMelding(tekst: error, toon: .negatief) }
 				if let outcome {
-					Section("Zojuist ingelezen") {
+					VSection("Zojuist ingelezen") {
 						ForEach(outcome.results) { r in
-							VStack(alignment: .leading, spacing: 2) {
-								Text(r.filename).lineLimit(1)
+							ImportRegel(titel: r.filename) {
 								if let needs = r.needs {
 									Button("Kolommen kiezen") { mapping = MappingRequest(filename: r.filename, needs: needs, content: contents[r.filename] ?? "") }
+										.vertexTekst(Vertex.Tekst.klein).foregroundStyle(Vertex.Kleur.accentStandaard)
 								} else if let e = r.error {
-									Text(e).font(.footnote).foregroundStyle(.red)
+									Text(e).vertexTekst(Vertex.Tekst.klein).foregroundStyle(Vertex.Kleur.statusNegatief)
 								} else {
-									Text("\(r.account) · \(r.added) nieuw van \(r.total)").font(.footnote).foregroundStyle(.secondary)
+									Text("\(r.account) · \(r.added) nieuw van \(r.total)").vertexTekst(Vertex.Tekst.klein).foregroundStyle(Vertex.Kleur.tekstGedempt)
 								}
 							}
 						}
 						if outcome.categorized > 0 {
-							Label("\(outcome.categorized) boekingen automatisch ingedeeld", systemImage: "checkmark.circle.fill").foregroundStyle(.green)
+							Label("\(outcome.categorized) boekingen automatisch ingedeeld", vSym: "checkmark.circle")
+								.vertexTekst(Vertex.Tekst.body).foregroundStyle(Vertex.Kleur.statusPositief)
 						}
 					}
 				}
-				Section("Eerdere uploads") {
+				VSection("Eerdere uploads") {
 					ForEach(data.imports) { i in
-						VStack(alignment: .leading, spacing: 2) {
-							Text(i.filename).lineLimit(1)
+						ImportRegel(titel: i.filename) {
 							Text("\(i.account) · \(i.nNew) nieuw van \(i.nTotal) · \(Format.date(i.importedAt))")
-								.font(.footnote).foregroundStyle(.secondary)
+								.vertexTekst(Vertex.Tekst.klein).foregroundStyle(Vertex.Kleur.tekstGedempt)
 						}
 					}
-					if data.imports.isEmpty { Text("Nog niets geüpload").foregroundStyle(.secondary) }
+					if data.imports.isEmpty { Text("Nog niets geüpload").foregroundStyle(Vertex.Kleur.tekstGedempt) }
 				}
 			}
 		}
-		.navigationTitle("Bankexport")
-		.navigationBarTitleDisplayMode(.inline)
 		.sheet(item: $mapping) { request in
 			CsvMappingSheet(request: request) { choice, iban in
 				await send([UploadFile(name: request.filename, content: contents[request.filename] ?? "", mapping: choice, iban: iban)])
@@ -133,6 +147,22 @@ struct ImportView: View {
 			// Een CSV zonder herkende kolommen: meteen om een keuze vragen.
 			if let r = result.results.first(where: { $0.needs != nil }), let needs = r.needs { mapping = MappingRequest(filename: r.filename, needs: needs, content: contents[r.filename] ?? "") }
 		} catch { self.error = requestError(error) }
+	}
+}
+
+/// Een geüpload bestand als rij: documenttegel, naam en een regel erbij.
+private struct ImportRegel<Detail: View>: View {
+	let titel: String
+	@ViewBuilder let detail: Detail
+
+	var body: some View {
+		HStack(spacing: 12) {
+			VertexTegel(image: Image("ui-description"), hue: .accent, maat: 36)
+			VStack(alignment: .leading, spacing: 1) {
+				Text(titel).vertexTekst(Vertex.Tekst.bodyVet).foregroundStyle(Vertex.Kleur.tekstHoofd).lineLimit(1)
+				detail
+			}
+		}
 	}
 }
 
@@ -219,7 +249,7 @@ struct CsvMappingSheet: View {
 			VStack(alignment: .leading, spacing: 2) {
 				Text(label)
 				Text(column.flatMap(sample) ?? "Geen kolom gekozen")
-					.font(.footnote).foregroundStyle(.secondary).lineLimit(1)
+					.font(.vKlein).foregroundStyle(Vertex.Kleur.tekstGedempt).lineLimit(1)
 			}
 			Spacer(minLength: 8)
 			Picker(label, selection: binding(role)) {
@@ -249,82 +279,78 @@ struct CsvMappingSheet: View {
 		if let r = try? await session.load({ try await $0.post("importeren/voorbeeld", payload) as ExampleOutcome }) { example = r }
 	}
 
+	@State private var meer = false
+
 	var body: some View {
-		NavigationStack {
-			Form {
-				Section {
+		VertexScherm(
+			midden: "Controleer", gloed: false, onderruimte: 40,
+			leiding: AnyView(VertexIcoonknop(systeemIcoon: "xmark", label: "Sluit", maat: 44) { dismiss() }),
+			acties: AnyView(VertexKopKnop(titel: "Inlezen", vet: true, uit: !ready || busy) {
+				Task {
+					busy = true
+					await onSend(choice, hasIban ? nil : iban)
+					dismiss()
+				}
+			})
+		) {
+				VSection {
 					if let example, !example.examples.isEmpty {
 						ForEach(example.examples) { e in
 							HStack(alignment: .firstTextBaseline, spacing: 10) {
 								VStack(alignment: .leading, spacing: 2) {
-									Text(e.counterparty ?? (e.description.isEmpty ? "—" : e.description)).lineLimit(1)
+									Text(e.counterparty ?? (e.description.isEmpty ? "—" : e.description)).vertexTekst(Vertex.Tekst.bodyVet).lineLimit(1)
 									HStack(spacing: 6) {
 										Text(Format.date(e.date))
 										if e.counterparty != nil, !e.description.isEmpty { Text("· \(e.description)").lineLimit(1) }
 									}
-									.font(.footnote).foregroundStyle(.secondary)
+									.font(.vKlein).foregroundStyle(Vertex.Kleur.tekstGedempt)
 								}
 								Spacer(minLength: 8)
-								Text(Format.amount(e.amountCents, signed: true)).monospacedDigit().foregroundStyle(e.amountCents < 0 ? Color.primary : Color.green)
+								Text(Format.amount(e.amountCents, signed: true)).vertexTekst(Vertex.Tekst.bodyVet).monospacedDigit().foregroundStyle(e.amountCents < 0 ? Vertex.Kleur.tekstHoofd : Vertex.Kleur.statusPositief)
 							}
 						}
 					} else if let message = example?.error {
-						Label(message, systemImage: "exclamationmark.triangle.fill").foregroundStyle(.red).font(.footnote)
+						Label(message, vSym: "exclamationmark.triangle.fill").foregroundStyle(Vertex.Kleur.statusNegatief).font(.vKlein)
 					} else {
-						HStack { ProgressView(); Text("Even kijken…").foregroundStyle(.secondary) }
+						HStack { ProgressView(); Text("Even kijken…").foregroundStyle(Vertex.Kleur.tekstGedempt) }
 					}
 				} header: {
-					Text("Zo wordt het ingelezen")
+					Text("ZO WORDT HET INGELEZEN")
 				} footer: {
 					if let n = example?.total, n > 0 { Text("Eerste \(min(n, example?.examples.count ?? n)) van \(n) boekingen uit \(request.filename). Klopt dit niet? Pas hieronder aan welke kolom wat is.") }
 				}
 				.opacity(loading ? 0.5 : 1)
 
 				if !hasIban {
-					Section {
-						LabeledContent("IBAN") {
-							TextField("Rekeningnummer", text: $iban, prompt: Text("NL00 BANK 0123 4567 89").foregroundStyle(Color(.placeholderText)))
+					VSection {
+						VWaarde("IBAN") {
+							TextField("Rekeningnummer", text: $iban, prompt: Text("NL00 BANK 0123 4567 89"))
 								.multilineTextAlignment(.trailing).textInputAutocapitalization(.characters).autocorrectionDisabled()
 						}
-					} header: { Text("Van welke rekening?") } footer: { Text("Dit bestand bevat geen eigen rekeningnummer.") }
+					} header: { Text("VAN WELKE REKENING?") } footer: { Text("Dit bestand bevat geen eigen rekeningnummer.") }
 				}
 
-				Section {
+				VSection {
 					ForEach(Self.main, id: \.0) { picker($0.0, $0.1) }
-					DisclosureGroup("Meer opties") {
-						ForEach(Self.more, id: \.0) { picker($0.0, $0.1) }
-					}
-				} header: { Text("Kolommen") }
-			}
-			.navigationTitle("Controleer")
-			.navigationBarTitleDisplayMode(.inline)
-			.toolbar {
-				ToolbarItem(placement: .cancellationAction) { Button("Annuleer") { dismiss() } }
-				ToolbarItem(placement: .confirmationAction) {
-					Button("Inlezen") {
-						Task {
-							busy = true
-							await onSend(choice, hasIban ? nil : iban)
-							dismiss()
+					VKnopRij(actie: { withAnimation { meer.toggle() } }) {
+						HStack {
+							Text("Meer opties").foregroundStyle(Vertex.Kleur.accentStandaard)
+							Spacer()
+							VSym(meer ? "chevron.up" : "chevron.down", 13).foregroundStyle(Vertex.Kleur.tekstVaag)
 						}
 					}
-					.disabled(!ready || busy)
-				}
-			}
-			.onAppear { roles = request.needs.mapping }
-			.task(id: "\(roles.sorted { $0.key < $1.key })|\(iban)") { await refresh() }
+					if meer { ForEach(Self.more, id: \.0) { picker($0.0, $0.1) } }
+				} header: { Text("KOLOMMEN") }
 		}
+		.onAppear { roles = request.needs.mapping }
+		.task(id: "\(roles.sorted { $0.key < $1.key })|\(iban)") { await refresh() }
 	}
 }
 
 /// De bankexport als losse pagina, vanuit de plus op Overzicht en Boekingen.
 struct ImportSheet: View {
-	@Environment(\.dismiss) private var dismiss
 	var body: some View {
-		NavigationStack {
-			ImportView()
-				.toolbar { ToolbarItem(placement: .cancellationAction) { Button("Sluit") { dismiss() } } }
-		}
+		ImportView().environment(\.vertexAlsSheet, true)
 	}
 }
 
@@ -333,26 +359,26 @@ struct ImportSheet: View {
 struct AccountsView: View {
 	var body: some View {
 		Loader(key: "rekeningen", fetch: { try await $0.get("rekeningen") as BankAccounts }) { (data: BankAccounts) in
-			List {
-				Section {
+			VertexScherm(titel: "Rekeningen", terug: "Instellingen", gloed: false) {
+				VSection {
 					ForEach(data.accounts) { a in
-						NavigationLink(value: a) {
-							VStack(alignment: .leading, spacing: 2) {
-								Text(a.name)
-								Text("\(a.kind == "spaar" ? "Spaarrekening" : "Betaalrekening") · \(Self.spaced(a.iban))")
-									.font(.footnote).foregroundStyle(.secondary)
+						VNavigationLink { AccountEditor(account: a) } label: {
+							HStack(spacing: 12) {
+								VertexTegel(image: Image(a.kind == "spaar" ? "nav-piggy" : "nav-card"), hue: a.kind == "spaar" ? .mint : .accent, maat: 38)
+								VStack(alignment: .leading, spacing: 1) {
+									Text(a.name).vertexTekst(Vertex.Tekst.bodyVet).foregroundStyle(Vertex.Kleur.tekstHoofd)
+									Text("\(a.kind == "spaar" ? "Spaarrekening" : "Betaalrekening") · \(Self.spaced(a.iban))")
+										.vertexTekst(Vertex.Tekst.klein).foregroundStyle(Vertex.Kleur.tekstGedempt)
+								}
 							}
 						}
 					}
-					if data.accounts.isEmpty { Text("Rekeningen verschijnen hier na de eerste upload.").foregroundStyle(.secondary) }
+					if data.accounts.isEmpty { Text("Rekeningen verschijnen hier na de eerste upload.").foregroundStyle(Vertex.Kleur.tekstGedempt) }
 				} footer: {
 					Text("Rekeningen verschijnen vanzelf na een upload. Op een spaarrekening houdt Stax per budget het spaarsaldo bij.")
 				}
 			}
 		}
-		.navigationTitle("Rekeningen")
-		.navigationBarTitleDisplayMode(.inline)
-		.navigationDestination(for: BankAccount.self) { AccountEditor(account: $0) }
 	}
 
 	static func spaced(_ iban: String) -> String {
@@ -376,24 +402,15 @@ struct AccountEditor: View {
 	}
 
 	var body: some View {
-		Form {
-			Section("Naam") { TextField("Naam", text: $name) }
-			Section {
-				Picker("Soort", selection: $kind) {
-					Text("Betaalrekening").tag("betaal")
-					Text("Spaarrekening").tag("spaar")
-				}
-				.pickerStyle(.segmented)
-			}
-			Section { LabeledContent("Rekeningnummer", value: AccountsView.spaced(account.iban)) }
-			if let error { Section { Text(error).foregroundStyle(.red) } }
-		}
-		.navigationTitle(account.name)
-		.navigationBarTitleDisplayMode(.inline)
-		.toolbar {
-			ToolbarItem(placement: .confirmationAction) {
-				Button("Opslaan") { Task { await save() } }.disabled(busy || name.trimmingCharacters(in: .whitespaces).isEmpty)
-			}
+		VertexScherm(titel: account.name, terug: "Rekeningen", gloed: false, onderruimte: 40) {
+			VSection("Naam") { VVeld("Naam", tekst: $name) }
+			VertexSegmentbalk(opties: [("betaal", "Betaalrekening"), ("spaar", "Spaarrekening")], waarde: $kind)
+			VSection { VWaarde("Rekeningnummer", value: AccountsView.spaced(account.iban)) }
+			if let error { VertexMelding(tekst: error, toon: .negatief) }
+			Button("Opslaan") { Task { await save() } }
+				.buttonStyle(VertexPrimaireKnop())
+				.disabled(busy || name.trimmingCharacters(in: .whitespaces).isEmpty)
+				.opacity(busy || name.trimmingCharacters(in: .whitespaces).isEmpty ? 0.5 : 1)
 		}
 	}
 
@@ -414,7 +431,7 @@ struct AccountEditor: View {
 struct RulesView: View {
 	@Environment(Session.self) private var session
 	@State private var adding = false
-	@State private var editing: RuleItem?
+		@State private var editing: RuleItem?
 	@State private var showMcc = false
 	@State private var message: String?
 
@@ -423,24 +440,28 @@ struct RulesView: View {
 	var body: some View {
 		Loader(key: "regels", fetch: { try await $0.get("regels") as Rules }) { (data: Rules) in
 			let name = { (id: Int) in data.budgets.first { $0.id == id }?.name ?? "Onbekend budget" }
-			List {
-				Section {
+			VertexScherm(
+				titel: "Regels", terug: "Instellingen", gloed: false,
+				acties: AnyView(VertexIcoonknop(systeemIcoon: "plus", label: "Nieuwe regel") { adding = true })
+			) {
+				VSection {
 					ForEach(data.rules.filter { showMcc || $0.field != "mcc" }) { r in
-						Button { editing = r } label: {
-							HStack {
-								VStack(alignment: .leading, spacing: 2) {
-									Text(r.pattern).foregroundStyle(.primary)
-									Text("\(Self.fields[r.field] ?? r.field) \(r.op)").font(.footnote).foregroundStyle(.secondary)
+						VKnopRij(actie: { editing = r }) {
+							HStack(spacing: 12) {
+								CategoryIcon(name: data.budgets.first { $0.id == r.categoryId }?.icon, size: 38, hue: data.budgets.first { $0.id == r.categoryId }?.hue)
+								VStack(alignment: .leading, spacing: 1) {
+									Text(r.pattern).vertexTekst(Vertex.Tekst.bodyVet).foregroundStyle(Vertex.Kleur.tekstHoofd)
+									Text("\(Self.fields[r.field] ?? r.field) \(r.op) · \(name(r.categoryId))")
+										.vertexTekst(Vertex.Tekst.klein).foregroundStyle(Vertex.Kleur.tekstGedempt).lineLimit(1)
 								}
-								Spacer()
-								Text(name(r.categoryId)).foregroundStyle(.secondary)
+								Spacer(minLength: 8)
+								VSym("chevron.right", 13).foregroundStyle(Vertex.Kleur.tekstVaag)
 							}
 						}
-						.buttonStyle(.plain)
-						.swipeActions {
-							Button("Verwijderen", role: .destructive) { Task { await remove(r) } }
-						}
+						
 					}
+				}
+				VSection {
 					Toggle("Ook regels op winkelsoort tonen", isOn: $showMcc)
 				} footer: {
 					VStack(alignment: .leading, spacing: 4) {
@@ -452,9 +473,6 @@ struct RulesView: View {
 			.sheet(isPresented: $adding) { RuleEditor(budgets: data.budgets, rule: nil) { message = $0 } }
 			.sheet(item: $editing) { r in RuleEditor(budgets: data.budgets, rule: r) { message = $0 } }
 		}
-		.navigationTitle("Regels")
-		.navigationBarTitleDisplayMode(.inline)
-		.toolbar { ToolbarItem(placement: .primaryAction) { Button { adding = true } label: { Image(systemName: "plus") } } }
 	}
 
 	private func remove(_ r: RuleItem) async {
@@ -477,43 +495,43 @@ struct RuleEditor: View {
 	@State private var category = 0
 	@State private var error: String?
 	@State private var busy = false
+	@State private var confirmDelete = false
 
 	var body: some View {
-		NavigationStack {
-			Form {
-				if rule == nil {
-					Section("Als de boeking…") {
-						Picker("Veld", selection: $field) {
-							ForEach(["tegenpartij", "omschrijving", "iban", "mcc"], id: \.self) { Text(RulesView.fields[$0] ?? $0).tag($0) }
-						}
-						Picker("Soort", selection: $op) {
-							Text("is").tag("is")
-							Text("bevat").tag("bevat")
-						}
-						.pickerStyle(.segmented)
-						TextField("Tekst of nummer", text: $pattern).textInputAutocapitalization(.never).autocorrectionDisabled()
-					}
-				} else if let rule {
-					Section { LabeledContent("\(RulesView.fields[rule.field] ?? rule.field) \(rule.op)", value: rule.pattern) }
+		VertexScherm(
+			midden: rule == nil ? "Nieuwe regel" : "Regel", gloed: false, onderruimte: 40,
+			leiding: AnyView(VertexIcoonknop(systeemIcoon: "xmark", label: "Sluit", maat: 44) { dismiss() }),
+			acties: AnyView(VertexKopKnop(titel: "Bewaar", vet: true, uit: busy || category == 0 || (rule == nil && pattern.trimmingCharacters(in: .whitespaces).isEmpty)) { Task { await save() } })
+		) {
+			if rule == nil {
+				VSection("Als de boeking…") {
+					VKeuze("Veld", selection: $field, opties: ["tegenpartij", "omschrijving", "iban", "mcc"].map { ($0, RulesView.fields[$0] ?? $0) })
+					VVeld("Tekst of nummer", tekst: $pattern)
 				}
-				Section("…dan indelen bij") {
-					Picker("Budget", selection: $category) {
-						Text("Kies een budget").tag(0)
-						ForEach(budgets) { Text($0.path.isEmpty ? $0.name : "\($0.path) › \($0.name)").tag($0.id) }
-					}
-				}
-				if let error { Section { Text(error).foregroundStyle(.red) } }
+				VertexSegmentbalk(opties: [("is", "is"), ("bevat", "bevat")], waarde: $op)
+			} else if let rule {
+				VSection { VWaarde("\(RulesView.fields[rule.field] ?? rule.field) \(rule.op)", value: rule.pattern) }
 			}
-			.navigationTitle(rule == nil ? "Nieuwe regel" : "Regel")
-			.navigationBarTitleDisplayMode(.inline)
-			.toolbar {
-				ToolbarItem(placement: .cancellationAction) { Button("Annuleer") { dismiss() } }
-				ToolbarItem(placement: .confirmationAction) {
-					Button("Opslaan") { Task { await save() } }.disabled(busy || category == 0 || (rule == nil && pattern.trimmingCharacters(in: .whitespaces).isEmpty))
-				}
+			VSection("…dan indelen bij") {
+				VKeuze("Budget", selection: $category, opties: [(0, "Kies een budget")] + budgets.map { ($0.id, $0.path.isEmpty ? $0.name : "\($0.path) › \($0.name)") })
 			}
-			.onAppear { if let rule { category = rule.categoryId } }
+			if let error { VertexMelding(tekst: error, toon: .negatief) }
+			if rule != nil {
+				Button("Verwijderen") { confirmDelete = true }.buttonStyle(VertexDestructieveKnop())
+			}
 		}
+		.vertexBevestiging("Regel verwijderen?", bericht: "Nieuwe boekingen worden niet meer automatisch met deze regel ingedeeld.", isPresented: $confirmDelete, knop: "Verwijderen") { Task { await remove() } }
+		.onAppear { if let rule { category = rule.categoryId } }
+	}
+
+	private func remove() async {
+		guard let rule else { return }
+		do {
+			try await session.load { try await $0.delete("regels/\(rule.id)") }
+			done("Regel verwijderd.")
+			session.revision += 1
+			dismiss()
+		} catch { self.error = requestError(error) }
 	}
 
 	private func save() async {
@@ -546,8 +564,6 @@ struct StartView: View {
 			StartForm(data: data) { date = $0 }
 				.id(data.startdatum)
 		}
-		.navigationTitle("Startsaldo")
-		.navigationBarTitleDisplayMode(.inline)
 	}
 
 	static func iso(_ d: Date) -> String {
@@ -589,50 +605,53 @@ struct StartForm: View {
 	private var rest: Int { data.balance - total }
 
 	var body: some View {
-		Form {
-			Section {
+		VertexScherm(
+			terug: "Instellingen", midden: "Startsaldo", gloed: false, onderruimte: 40,
+			acties: AnyView(VertexKopKnop(titel: "Opslaan", vet: true, uit: busy) { Task { await save() } })
+		) {
+			VSection {
 				DatePicker("Startdatum", selection: $start, displayedComponents: .date)
 					.onChange(of: start) { _, new in changeDate(new) }
 			} footer: {
 				Text("Vanaf deze dag houdt Stax de spaarsaldi bij. Alles wat daarna op de spaarrekening binnenkomt of eraf gaat, wordt per boeking aan een budget gekoppeld.")
 			}
-			Section {
-				Picker("Inkomsten op de spaarrekening", selection: $incomePot) {
-					Text("Niet bij inkomsten").tag(0)
-					ForEach(data.pots) { Text("Naar \($0.name)").tag($0.id) }
-				}
+			VSection {
+				VKeuze("Inkomsten op de spaarrekening", selection: $incomePot, opties: [(0, "Niet bij inkomsten")] + data.pots.map { ($0.id, "Naar \($0.name)") })
 			} footer: {
 				Text("Rente en ander geld dat direct op de spaarrekening binnenkomt, kun je bij inkomsten zetten. Het geld zelf komt dan bij dit budget, zodat de spaarsaldi blijven kloppen met de bank.")
 			}
-			Section {
-				LabeledContent("Op de spaarrekening") { Text(Format.money(data.balance)).monospacedDigit() }
-				LabeledContent("Verdeeld") { Text(Format.money(total)).monospacedDigit() }
-				LabeledContent(rest == 0 ? "Alles verdeeld" : rest > 0 ? "Nog te verdelen" : "Te veel verdeeld") {
-					Text(Format.money(abs(rest))).monospacedDigit().foregroundStyle(rest == 0 ? .green : .orange)
+			VSection {
+				VWaarde("Op de spaarrekening", value: Format.money(data.balance))
+				VWaarde("Verdeeld", value: Format.money(total))
+				VWaarde(rest == 0 ? "Alles verdeeld" : rest > 0 ? "Nog te verdelen" : "Te veel verdeeld") {
+					Text(Format.money(abs(rest))).foregroundStyle(rest == 0 ? Vertex.Kleur.statusPositief : Vertex.Kleur.statusWaarschuwing)
 				}
 			}
-			Section("Startsaldo per budget") {
+			VSection("Startsaldo per budget") {
 				ForEach(data.pots) { p in
-					HStack {
+					HStack(spacing: 12) {
+						VertexTegel(image: iconImage(nil), hue: .accent, maat: 36)
 						VStack(alignment: .leading, spacing: 1) {
-							Text(p.name).fontWeight(p.isGroup ? .semibold : .regular)
-							if !p.context.isEmpty { Text(p.context).font(.footnote).foregroundStyle(.secondary) }
+							Text(p.name).vertexTekst(Vertex.Tekst.bodyVet).foregroundStyle(Vertex.Kleur.tekstHoofd)
+							if !p.context.isEmpty { Text(p.context).vertexTekst(Vertex.Tekst.klein).foregroundStyle(Vertex.Kleur.tekstGedempt) }
 						}
-						Spacer()
+						Spacer(minLength: 4)
 						TextField("0,00", text: Binding(get: { values[p.id] ?? "" }, set: { values[p.id] = $0 }))
-							.keyboardType(.decimalPad).multilineTextAlignment(.trailing).frame(width: 100)
+							.keyboardType(.decimalPad).multilineTextAlignment(.trailing).vertexTekst(Vertex.Tekst.bodyVet)
+							.padding(.horizontal, 10).frame(width: 96, height: 38)
+							.background(Vertex.Kleur.achtergrondKaart2, in: RoundedRectangle(cornerRadius: 10, style: .continuous))
 						if rest > 0 {
-							Button("+ rest") { values[p.id] = Format.input((Format.parse(values[p.id] ?? "") ?? 0) + rest) }
-								.font(.footnote).buttonStyle(.borderless)
+							Button { values[p.id] = Format.input((Format.parse(values[p.id] ?? "") ?? 0) + rest) } label: {
+								Text("+ rest").vertexTekst(Vertex.Tekst.label).foregroundStyle(Vertex.Kleur.accentStandaard)
+									.padding(.horizontal, 10).padding(.vertical, 6).background(Vertex.Kleur.accentZacht, in: Capsule())
+							}
+							.buttonStyle(.plain)
 						}
 					}
 				}
-				if data.pots.isEmpty { Text("Er zijn nog geen budgetten die sparen. Zet bij een budget de optie “Spaart” aan.").foregroundStyle(.secondary) }
+				if data.pots.isEmpty { Text("Er zijn nog geen budgetten die sparen. Zet bij een budget de optie “Spaart” aan.").foregroundStyle(Vertex.Kleur.tekstGedempt) }
 			}
-			if let error { Section { Text(error).foregroundStyle(.red) } }
-		}
-		.toolbar {
-			ToolbarItem(placement: .confirmationAction) { Button("Opslaan") { Task { await save() } }.disabled(busy) }
+			if let error { VertexMelding(tekst: error, toon: .negatief) }
 		}
 	}
 
@@ -672,51 +691,52 @@ struct AccountView: View {
 
 	var body: some View {
 		Loader(key: "account", fetch: { try await $0.get("account") as AccountInfo }) { (data: AccountInfo) in
-			List {
-				Section("Naam") {
-					TextField("Naam", text: $name)
+			VertexScherm(titel: "Account", terug: "Instellingen", gloed: false) {
+				VSection("Naam") {
+					VVeld("Naam", tekst: $name)
 						.textContentType(.username)
 						.textInputAutocapitalization(.never)
 						.autocorrectionDisabled()
 						.onAppear { if !nameLoaded { name = data.me?.name ?? session.user; nameLoaded = true } }
-					Button("Naam bewaren") { Task { await saveName() } }
-						.disabled(busy || name.trimmingCharacters(in: .whitespaces).isEmpty || name == session.user)
 				}
-				Section {
-					SecureField("Huidig wachtwoord", text: $current).textContentType(.password)
-					SecureField("Nieuw wachtwoord", text: $next).textContentType(.newPassword)
-					SecureField("Nieuw wachtwoord nog een keer", text: $repeatNext).textContentType(.newPassword)
-					Button("Wachtwoord wijzigen") { Task { await savePassword() } }
-						.disabled(busy || current.isEmpty || next.isEmpty || repeatNext.isEmpty)
+				Button("Naam bewaren") { Task { await saveName() } }
+					.buttonStyle(VertexSecundaireKnop())
+					.disabled(busy || name.trimmingCharacters(in: .whitespaces).isEmpty || name == session.user)
+				VSection {
+					VVeld("Huidig", tekst: $current, geheim: true).textContentType(.password)
+					VVeld("Nieuw", tekst: $next, geheim: true).textContentType(.newPassword)
+					VVeld("Nog een keer", tekst: $repeatNext, geheim: true).textContentType(.newPassword)
 				} header: {
-					Text("Wachtwoord")
+					Text("WACHTWOORD")
 				} footer: {
 					Text("Minstens 12 tekens. Na een wijziging worden je andere sessies en telefoons uitgelogd.")
 				}
-				if let message { Section { Label(message, systemImage: "checkmark.circle.fill").foregroundStyle(.green) } }
-				if let error { Section { Label(error, systemImage: "exclamationmark.triangle.fill").foregroundStyle(.red) } }
-				Section {
+				Button("Wachtwoord wijzigen") { Task { await savePassword() } }
+					.buttonStyle(VertexPrimaireKnop())
+					.disabled(busy || current.isEmpty || next.isEmpty || repeatNext.isEmpty)
+					.opacity(current.isEmpty || next.isEmpty || repeatNext.isEmpty ? 0.5 : 1)
+				if let message { VertexMelding(tekst: message, toon: .positief) }
+				if let error { VertexMelding(tekst: error, toon: .negatief) }
+				VSection {
 					ForEach(data.devices) { d in
-						VStack(alignment: .leading, spacing: 2) {
-							Text(d.name)
-							Text("\(d.user) · \(d.lastUsedAt.map { "laatst gebruikt \(Format.date($0))" } ?? "ingelogd \(Format.date(d.createdAt))")")
-								.font(.footnote).foregroundStyle(.secondary)
+						HStack(spacing: 12) {
+							VertexTegel(image: Image("ui-mobile"), hue: .lucht, maat: 36)
+							VStack(alignment: .leading, spacing: 1) {
+								Text(d.name).vertexTekst(Vertex.Tekst.bodyVet).foregroundStyle(Vertex.Kleur.tekstHoofd)
+								Text("\(d.user) · \(d.lastUsedAt.map { "laatst gebruikt \(Format.date($0))" } ?? "ingelogd \(Format.date(d.createdAt))")")
+									.vertexTekst(Vertex.Tekst.klein).foregroundStyle(Vertex.Kleur.tekstGedempt)
+							}
 						}
-						.swipeActions { Button("Toegang afnemen", role: .destructive) { removeDevice = d } }
+						.simultaneousGesture(LongPressGesture(minimumDuration: 0.5).onEnded { _ in removeDevice = d })
 					}
 				} header: {
-					Text("Telefoons met de app")
+					Text("TELEFOONS MET DE APP")
 				} footer: {
-					Text("Veeg een telefoon naar links om de toegang af te nemen; hij moet dan opnieuw inloggen.")
+					Text("Houd een telefoon ingedrukt om de toegang af te nemen; hij moet dan opnieuw inloggen.")
 				}
 			}
 		}
-		.navigationTitle("Account")
-		.navigationBarTitleDisplayMode(.inline)
-		.confirmationDialog("Toegang afnemen?", isPresented: .constant(removeDevice != nil), titleVisibility: .visible, presenting: removeDevice) { d in
-			Button("Toegang van \(d.name) afnemen", role: .destructive) { Task { await revoke(d) } }
-			Button("Annuleer", role: .cancel) { removeDevice = nil }
-		}
+		.vertexBevestiging("Toegang afnemen?", bericht: removeDevice.map { "\($0.name) kan dan niet meer inloggen." }, isPresented: Binding(get: { removeDevice != nil }, set: { if !$0 { removeDevice = nil } }), knop: "Toegang afnemen") { if let d = removeDevice { Task { await revoke(d) } } }
 	}
 
 	private struct NameBody: Encodable { let name: String }
@@ -786,35 +806,36 @@ struct BackupView: View {
 	private struct Summary: Decodable { let accounts: Int; let transactions: Int; let budgets: Int }
 
 	var body: some View {
-		List {
-			Section {
-				Button { Task { await make() } } label: {
-					HStack {
-						Label("Back-up maken", systemImage: "square.and.arrow.up")
+		VertexScherm(titel: "Back-up", terug: "Instellingen", gloed: false) {
+			VSection {
+				VKnopRij(actie: { Task { await make() } }) {
+					HStack(spacing: 12) {
+						VSym("square.and.arrow.up", 18)
+						Text("Back-up maken").vertexTekst(Vertex.Tekst.bodyVet)
 						if busy && pending == nil { Spacer(); ProgressView() }
 					}
+					.foregroundStyle(Vertex.Kleur.accentStandaard)
 				}
 				.disabled(busy)
 			} footer: {
 				Text("Eén bestand met al je gegevens: rekeningen, boekingen, budgetten, regels en startsaldo. Zonder inloggegevens. Bewaar het op een veilige plek, bijvoorbeeld in iCloud Drive.")
 			}
-			Section {
-				Button(role: .destructive) { picking = true } label: { Label("Back-up terugzetten", systemImage: "square.and.arrow.down") }
-					.disabled(busy)
-					.confirmationDialog("Alles vervangen door deze back-up?", isPresented: $confirm, titleVisibility: .visible) {
-						Button("Alles vervangen", role: .destructive) { if let pending { Task { await restore(pending) } } }
-						Button("Annuleren", role: .cancel) { pending = nil }
-					} message: {
-						Text("Wat nu in Stax staat, verdwijnt. Dit kan niet ongedaan worden gemaakt.")
+			VSection {
+				VKnopRij(actie: { picking = true }) {
+					HStack(spacing: 12) {
+						VSym("square.and.arrow.down", 18)
+						Text("Back-up terugzetten").vertexTekst(Vertex.Tekst.bodyVet)
 					}
+					.foregroundStyle(Vertex.Kleur.statusNegatief)
+				}
+				.disabled(busy)
+				.vertexBevestiging("Alles vervangen door deze back-up?", bericht: "Wat nu in Stax staat, verdwijnt. Dit kan niet ongedaan worden gemaakt.", isPresented: $confirm, knop: "Alles vervangen") { if let pending { Task { await restore(pending) } } }
 			} footer: {
 				Text("Kies een back-upbestand van Stax, van de server of van een andere telefoon.")
 			}
-			if let message { Section { Label(message, systemImage: "checkmark.circle.fill").foregroundStyle(.green) } }
-			if let error { Section { Label(error, systemImage: "exclamationmark.triangle.fill").foregroundStyle(.red) } }
+			if let message { VertexMelding(tekst: message, toon: .positief) }
+			if let error { VertexMelding(tekst: error, toon: .negatief) }
 		}
-		.navigationTitle("Back-up")
-		.navigationBarTitleDisplayMode(.inline)
 		.fileExporter(isPresented: $exporting, document: file, contentType: .json, defaultFilename: "stax-backup-\(Self.today)") { result in
 			if case .failure(let e) = result { error = requestError(e) } else { message = "Back-up bewaard." }
 		}

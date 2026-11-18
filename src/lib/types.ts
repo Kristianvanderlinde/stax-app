@@ -42,6 +42,8 @@ export interface Category {
 	goal_date: string | null;
 	funding: Funding | null;
 	icon: string | null;
+	/** Kleur van een groep: accent, lucht, koraal, mint of zon. */
+	color: string | null;
 	sort: number;
 	archived: number;
 }
@@ -74,6 +76,8 @@ export interface CatOption {
 	/** De groep waar dit budget direct in staat. */
 	parent: number | null;
 	icon: string | null;
+	/** Kleur van de groep waar dit bij hoort. */
+	hue: string;
 	/** Naam van de hoofdmap waar deze map onder valt (leeg voor de wortel). */
 	group: string;
 }

@@ -1,6 +1,6 @@
 {
 	"name": "stax",
-	"version": "0.1.0",
+	"version": "2.0.0",
 	"private": true,
 	"license": "SEE LICENSE IN LICENSE",
 	"type": "module",
@@ -17,7 +17,8 @@
 	},
 	"dependencies": {
 		"fast-xml-parser": "5.11.2",
-		"qrcode": "1.5.4"
+		"qrcode": "1.5.4",
+		"vertex": "file:vendor/vertex"
 	},
 	"devDependencies": {
 		"@sveltejs/adapter-node": "5.5.7",

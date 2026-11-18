@@ -34,22 +34,9 @@
 			<a class="btn primary" href="/upload"><Icon name="upload" size={18} /> Upload</a>
 		</header>
 
-		<!-- Rekeningen als staande kaarten naast elkaar. -->
-		<div class="hero">
-			{#each data.accounts as a, i}
-				<div class="balance" class:alt={i % 2 === 1}>
-					<span class="b-name">{a.name}</span>
-					<span class="b-foot">
-						<strong class="num">{money(a.balance)}</strong>
-						<span class="iban">{a.iban.replace(/(.{4})/g, '$1 ').trim()}</span>
-					</span>
-				</div>
-			{/each}
-		</div>
-
 		<section class="tiles">
-			<div class="card tile">
-				<span class="head"><span class="label">Inkomsten</span>
+			<div class="card tile accent">
+				<span class="head"><span class="label"><Icon name="in" size={18} /> Inkomsten</span>
 					<InfoTip label="inkomsten">
 						Wat er deze maand binnenkwam.
 						{#if data.income.expected}Verwacht: {money(data.income.expected)}{data.income.note ? `, ${data.income.note}` : ''}.{:else}Vul onderaan bij Inkomsten in wat je verwacht, dan kun je vooruit plannen.{/if}
@@ -57,8 +44,8 @@
 				</span>
 				<strong class="num">{money(data.income.received)}</strong>
 			</div>
-			<div class="card tile">
-				<span class="head"><span class="label">Uitgaven</span>
+			<div class="card tile accent">
+				<span class="head"><span class="label"><Icon name="out" size={18} /> Uitgaven</span>
 					<InfoTip label="uitgaven">Wat er deze maand is uitgegeven, met terugbetalingen er al af.</InfoTip>
 				</span>
 				<strong class="num">{money(data.totals.uitgaven)}</strong>
@@ -82,7 +69,7 @@
 
 		<!-- Wat er nog moet gebeuren: compacte regels onder de tegels. -->
 		{#if data.open.n > 0 || data.refunds.n > 0 || (data.hasSavings && !data.startdatum)}
-			<div class="todos">
+			<div class="todos card">
 				{#if data.open.n > 0}
 					<a class="todo" href="/boekingen?status=open&maand={data.month}">
 						<span class="t-icon"><Icon name="list" size={18} /></span>
@@ -111,7 +98,7 @@
 			<div class="section-head">
 				<h2>Budgetten in {monthName(data.month, false)}</h2>
 			</div>
-			<MonthList groups={data.rows} month={data.month} />
+			<MonthList groups={data.rows} month={data.month} losse />
 		</section>
 
 		{#if data.incomeRows.length}
@@ -120,7 +107,6 @@
 				<MonthList groups={[{ group: data.incomeRoot, rows: data.incomeRows }]} month={data.month} header={false} income />
 			</section>
 		{/if}
-		<p class="muted small asof">Saldi op {shortDate(data.balanceDate)}, volgens de laatste upload.</p>
 		<PeriodBar month={data.month} onlyAfterScroll />
 	</div>
 {/if}
@@ -161,153 +147,100 @@
 		}
 	}
 
-	.hero {
-		display: flex;
-		gap: 14px;
-		overflow-x: auto;
-		scroll-snap-type: x mandatory;
-		margin: -6px -16px -18px;
-		padding: 6px 16px 26px;
-		scrollbar-width: none;
-	}
-	.hero::-webkit-scrollbar {
-		display: none;
-	}
-	.balance {
-		flex: 0 0 272px;
-		min-height: 196px;
-		scroll-snap-align: start;
-		display: flex;
-		flex-direction: column;
-		justify-content: space-between;
-		gap: 18px;
-		padding: 22px;
-		border-radius: 26px;
-		position: relative;
-		overflow: hidden;
-	}
-	.balance {
-		background: var(--gradient);
-		color: #fff;
-		box-shadow: 0 14px 34px rgb(106 85 220 / 0.28);
-	}
-	.balance::after {
-		content: '';
-		position: absolute;
-		inset: -40% -20% auto auto;
-		width: 80%;
-		aspect-ratio: 1;
-		border-radius: 50%;
-		background: radial-gradient(circle, rgb(255 255 255 / 0.18), transparent 65%);
-	}
-	.balance.alt {
-		background: var(--gradient-2);
-		box-shadow: 0 14px 34px rgb(80 72 207 / 0.25);
-	}
-	.b-name {
-		font-size: 15px;
-		font-weight: 500;
-		opacity: 0.9;
-	}
-	.b-foot {
-		display: flex;
-		flex-direction: column;
-		gap: 4px;
-	}
-	.balance strong {
-		font-size: 32px;
-		font-weight: 700;
-		letter-spacing: -0.035em;
-		line-height: 1.1;
-	}
-	.iban {
-		font-size: 12px;
-		letter-spacing: 0.12em;
-		opacity: 0.75;
-	}
-	/* Wat nog moet gebeuren: compacte regels in de waarschuwingskleur. */
+	/* Wat nog moet gebeuren: één kaart met een regel per taak. */
 	.todos {
-		display: grid;
-		grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
-		gap: 10px;
+		display: flex;
+		flex-direction: column;
+		padding: var(--ruimte-2);
 	}
 	.todo {
+		position: relative;
 		display: flex;
 		align-items: center;
-		gap: 12px;
-		padding: 10px 14px;
-		border-radius: 16px;
-		background: var(--warn-soft);
+		gap: var(--ruimte-3);
+		padding: var(--ruimte-3) var(--ruimte-3);
+		border-radius: var(--vorm-lg);
 		color: var(--text);
 		transition: background-color 0.15s;
 	}
+	.todo + .todo::before {
+		content: '';
+		position: absolute;
+		top: 0;
+		left: var(--ruimte-3);
+		right: var(--ruimte-3);
+		border-top: 1px solid var(--line);
+	}
+	.todo:hover::before,
+	.todo:hover + .todo::before {
+		opacity: 0;
+	}
 	.todo:hover {
-		background: color-mix(in srgb, var(--warn-soft) 80%, var(--warn) 8%);
+		background: var(--surface-2);
 	}
 	.t-icon {
 		flex: none;
 		display: grid;
 		place-items: center;
-		width: 32px;
-		height: 32px;
-		border-radius: 50%;
-		background: var(--surface);
-		color: var(--warn);
+		width: 34px;
+		height: 34px;
+		border-radius: var(--vorm-md);
+		background: var(--accent-zacht);
+		color: var(--accent-standaard);
 	}
 	.t-text {
 		flex: 1;
 		min-width: 0;
-		font-size: 14px;
-		color: var(--muted);
 	}
 	.t-text strong {
-		color: var(--text);
-		font-weight: 650;
+		font-weight: 600;
 	}
 	.t-go {
 		flex: none;
 		display: inline-flex;
 		align-items: center;
 		gap: 2px;
-		font-weight: 600;
-		font-size: 14px;
-		color: var(--warn);
+		font: 600 15px/22px var(--tekst-familie);
+		color: var(--accent-standaard);
 	}
-	@media (min-width: 860px) {
-		.hero {
-			margin: -6px 0 -18px;
-			padding: 6px 0 26px;
-			overflow: visible;
-			flex-wrap: wrap;
-		}
-	}
-
 	.tiles {
 		display: grid;
-		grid-template-columns: repeat(2, 1fr);
-		gap: 14px;
+		grid-template-columns: repeat(2, minmax(0, 1fr));
+		gap: var(--ruimte-4);
 	}
 	@media (min-width: 900px) {
 		.tiles {
-			grid-template-columns: repeat(4, 1fr);
+			grid-template-columns: repeat(4, minmax(0, 1fr));
 		}
 	}
 	.tile {
 		position: relative;
 		display: flex;
 		flex-direction: column;
-		gap: 3px;
-		padding: 18px;
+		gap: 10px;
+		padding: var(--ruimte-5);
+	}
+	.tile.accent {
+		background: var(--verloop-accent);
+		border-color: transparent;
+		box-shadow: var(--schaduw-accent);
+		color: var(--tekst-op-accent);
+	}
+	.tile.accent :global(.info button) {
+		color: rgb(255 255 255 / 0.8);
 	}
 	.label {
-		color: var(--accent);
-		font-size: 14px;
-		font-weight: 600;
+		display: inline-flex;
+		align-items: center;
+		gap: 6px;
+		color: var(--muted);
+		font: 600 15px/22px var(--tekst-familie);
+	}
+	.tile.accent .label {
+		color: var(--tekst-op-accent);
 	}
 	.tile strong {
-		font-size: 26px;
-		font-weight: 700;
-		letter-spacing: -0.03em;
+		font: 700 28px/34px var(--tekst-familie);
 	}
 
 	.tile .head {
@@ -315,8 +248,5 @@
 		align-items: center;
 		justify-content: space-between;
 		gap: 8px;
-	}
-	.asof {
-		margin: -10px 4px 0;
 	}
 </style>

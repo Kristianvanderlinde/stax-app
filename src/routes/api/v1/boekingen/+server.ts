@@ -16,7 +16,8 @@ export function GET({ url }) {
 		group: o.isGroup,
 		kind: o.kind,
 		savings: o.savings,
-		icon: o.icon
+		icon: o.icon,
+		hue: o.hue
 	}));
 	return json({ ...data, options, accounts: accounts().map((a) => ({ id: a.id, name: a.name, kind: a.kind })) });
 }

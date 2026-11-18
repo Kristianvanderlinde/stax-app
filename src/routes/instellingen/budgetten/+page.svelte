@@ -1,4 +1,6 @@
 <script lang="ts">
+	import { hueStyle } from '$lib/hue';
+	import { Terugknop } from 'vertex/web';
 	import { enhance } from '$app/forms';
 	import { goto } from '$app/navigation';
 	import { page } from '$app/state';
@@ -124,7 +126,7 @@
 	<li data-budget={b.id} data-tree={tree} class:moving={drag?.id === b.id} class:drop-before={drop === 'before'} class:drop-after={drop === 'after'}>
 		<button type="button" class="plain grip" aria-label="{b.name} verslepen" onpointerdown={(e) => startDrag(e, b, false, tree)}><Icon name="grip" size={18} /></button>
 		<a class="item" href={editHref(b.id)} data-sveltekit-noscroll data-sveltekit-replacestate>
-			<span class="avatar soft sm"><Icon name={b.icon} size={17} /></span>
+			<span class="tegel"><Icon name={b.icon} size={17} /></span>
 			<span class="name">{b.name}</span>
 			{#if kindTag(b.kind)}<span class="tag small">{kindTag(b.kind)}</span>{/if}
 			<Icon name="edit" size={16} />
@@ -134,7 +136,7 @@
 
 <div class="stack">
 	<header>
-		<a class="link back" href="/instellingen"><Icon name="left" size={18} /> Instellingen</a>
+		<Terugknop href="/instellingen">Instellingen</Terugknop>
 		<h1>Budgetten</h1>
 		<p class="muted">
 			Uitgaven staan in groepen; een groep telt alleen op. Een budget kan sparen, eventueel naar een doel. Sleep om de volgorde of de groep te
@@ -152,6 +154,7 @@
 			{@const drop = drag?.group ? dropAt(g.id) : drag && dropAt(g.id) === 'inside' ? 'inside' : null}
 			<div
 				class="card group"
+				style={hueStyle(g.id, page.data.groupHues ?? {})}
 				data-group={g.id}
 				class:moving={drag?.id === g.id}
 				class:drop-before={drop === 'before'}
@@ -163,7 +166,7 @@
 						<Icon name="grip" size={18} />
 					</button>
 					<a class="item" href={editHref(g.id)} data-sveltekit-noscroll data-sveltekit-replacestate>
-						<span class="avatar sm"><Icon name={g.icon} size={18} /></span>
+						<span class="tegel groep"><Icon name={g.icon} size={18} /></span>
 						<strong class="name">{g.name}</strong>
 						<span class="muted small">{g.budgets.length} {g.budgets.length === 1 ? 'budget' : 'budgetten'}</span>
 						<Icon name="edit" size={16} />

@@ -16,6 +16,7 @@ export async function PUT({ params, request }) {
 		updateMap(Number(params.id), {
 			name: b.name,
 			icon: typeof b.icon === 'string' ? b.icon : '',
+			color: typeof b.color === 'string' ? b.color : undefined,
 			kind: typeof b.kind === 'string' ? b.kind : '',
 			funding: typeof b.funding === 'string' ? b.funding : '',
 			goalCents: Number.isInteger(b.goal_cents) ? b.goal_cents : null,
