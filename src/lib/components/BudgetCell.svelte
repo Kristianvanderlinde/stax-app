@@ -1,4 +1,5 @@
 <script lang="ts">
+	import { Segmentbalk } from 'vertex/web';
 	import type { Snippet } from 'svelte';
 	import { enhance } from '$app/forms';
 	import { money, moneyInput, monthName } from '$lib/format';
@@ -115,12 +116,15 @@
 				</span>
 			</div>
 			<input bind:this={input} name="amount" inputmode="decimal" placeholder="0,00" aria-label="Bedrag" bind:value={amount} />
-			<div class="seg wide" role="group" aria-label="Geldt voor">
-				<button type="button" aria-pressed={scope === 'alleen'} onclick={() => (scope = 'alleen')}>Alleen {monthName(month, false)}</button>
-				<button type="button" aria-pressed={scope === 'vanaf'} onclick={() => (scope = 'vanaf')}>
-					{node.budgetTemplate ? `Vanaf ${monthName(month, false)}` : 'Alle maanden'}
-				</button>
-			</div>
+			<Segmentbalk
+				vol
+				label="Geldt voor"
+				bind:waarde={scope}
+				opties={[
+					{ waarde: 'alleen', label: `Alleen ${monthName(month, false)}` },
+					{ waarde: 'vanaf', label: node.budgetTemplate ? `Vanaf ${monthName(month, false)}` : 'Alle maanden' }
+				]}
+			/>
 			{#if error}<p class="neg small">{error}</p>{/if}
 			<div class="actions">
 				<button class="primary">Opslaan</button>
@@ -209,13 +213,6 @@
 		font-size: 20px;
 		font-weight: 600;
 		font-variant-numeric: tabular-nums;
-	}
-	.seg.wide {
-		display: flex;
-	}
-	.seg.wide button {
-		flex: 1;
-		padding: 0 8px;
 	}
 	.actions {
 		display: flex;

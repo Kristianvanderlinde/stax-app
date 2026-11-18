@@ -21,44 +21,50 @@ struct BudgetDetailView: View {
 
 	var body: some View {
 		Loader(key: "\(id)|\(month ?? "")", fetch: { try await $0.get("budgetten/\(id)", ["maand": month]) as BudgetDetail }) { (data: BudgetDetail) in
-			List {
-				Section {
-					Header(data: data)
-						.listRowInsets(EdgeInsets())
-						.listRowBackground(Color.clear)
-				}
+			VertexScherm(
+				terug: data.node.path.last ?? "Overzicht", gloed: true,
+				acties: data.edit == nil ? nil : AnyView(
+					HStack(spacing: 8) {
+						if data.node.group { VertexIcoonknop(systeemIcoon: "plus", label: "Nieuw budget in deze groep") { adding = "budget" } }
+						VertexIcoonknop(systeemIcoon: "pencil", label: data.node.group ? "Groep bewerken" : "Budget bewerken") { editing = data }
+					}
+				)
+			) {
+				Header(data: data)
 				// Bij een groep staan de budgetten voorop; de cijfers en de grafiek volgen daaronder.
 				if !data.children.isEmpty {
-					Section {
-						ForEach(data.children) { row in
-							NavigationLink(value: row.id) { BudgetRowView(row: row) }
-						}
-					} header: {
-						Text("Budgetten").font(.title3.weight(.bold)).textCase(nil).foregroundStyle(.primary)
+					VertexSectiekop(titel: "Budgetten").padding(.top, 4)
+					VertexRijen(items: data.children) { row in
+						NavigationLink(value: row.id) { BudgetRowView(row: row).padding(.horizontal, 16).padding(.vertical, 12).contentShape(Rectangle()) }
+							.buttonStyle(.plain)
 					}
 				}
-				Section {
-					Figures(data: data)
-				}
+				VSection { Figures(data: data) }
 				if data.history.count > 1 {
-					Section(data.node.kind == "budget" || data.node.group || data.node.tree == "inkomsten" ? "Per maand" : "Balans per maand") {
-						History(data: data).frame(height: 180).padding(.vertical, 6)
+					VStack(alignment: .leading, spacing: 12) {
+						Text(data.node.kind == "budget" || data.node.group || data.node.tree == "inkomsten" ? "Per maand" : "Balans per maand").vertexTekst(Vertex.Tekst.kop)
+						History(data: data).frame(height: 180)
 					}
+					.padding(20)
+					.frame(maxWidth: .infinity, alignment: .leading)
+					.vertexKaart()
 				}
-				Section("Boekingen in \(Format.month(data.month, year: false))") {
-					if data.bookings.isEmpty {
-						Text("Geen boekingen in deze maand.").foregroundStyle(.secondary)
-					}
-					ForEach(data.bookings) { b in
-						HStack {
-							VStack(alignment: .leading, spacing: 2) {
-								Text(b.transfer ? "Overboeking" : b.name).lineLimit(1)
-								Text(data.children.isEmpty ? Format.date(b.date) : "\(Format.date(b.date)) · \(b.budget)")
-									.font(.caption)
-									.foregroundStyle(.secondary)
+				VertexSectiekop(titel: "Boekingen in \(Format.month(data.month, year: false))").padding(.top, 4)
+				if data.bookings.isEmpty {
+					Text("Geen boekingen in deze maand.").foregroundStyle(Vertex.Kleur.tekstGedempt)
+				} else {
+					VSection {
+						ForEach(data.bookings) { b in
+							HStack {
+								VStack(alignment: .leading, spacing: 1) {
+									Text(b.transfer ? "Overboeking" : b.name).vertexTekst(Vertex.Tekst.bodyVet).lineLimit(1)
+									Text(data.children.isEmpty ? Format.date(b.date) : "\(Format.date(b.date)) · \(b.budget)")
+										.vertexTekst(Vertex.Tekst.klein).foregroundStyle(Vertex.Kleur.tekstGedempt)
+								}
+								Spacer()
+								Text(Format.amount(b.amount)).vertexTekst(Vertex.Tekst.bodyVet).monospacedDigit()
+									.foregroundStyle(b.amount > 0 ? Vertex.Kleur.statusPositief : Vertex.Kleur.tekstHoofd)
 							}
-							Spacer()
-							Text(Format.amount(b.amount)).monospacedDigit().foregroundStyle(b.amount > 0 ? .green : .primary)
 						}
 					}
 				}
@@ -76,24 +82,6 @@ struct BudgetDetailView: View {
 					}
 				}
 			#endif
-			.listStyle(.insetGrouped)
-			.contentMargins(.top, 0, for: .scrollContent)
-			.contentMargins(.bottom, 72, for: .scrollContent)
-			.toolbar {
-				// Bewerken kan alleen als de server het ondersteunt.
-				if data.edit != nil {
-					if data.node.group {
-						ToolbarItem(placement: .topBarTrailing) {
-							Button { adding = "budget" } label: { Image(systemName: "plus") }
-								.accessibilityLabel("Nieuw budget in deze groep")
-						}
-					}
-					ToolbarItem(placement: .topBarTrailing) {
-						Button { editing = data } label: { Image(systemName: "pencil") }
-							.accessibilityLabel(data.node.group ? "Groep bewerken" : "Budget bewerken")
-					}
-				}
-			}
 			.sheet(item: $editing) { shown in
 				BudgetEditor(mode: .edit(shown), month: shown.month, onDeleted: { dismiss() })
 			}
@@ -107,10 +95,9 @@ struct BudgetDetailView: View {
 					months: Format.choices(data.months),
 					browse: .init(name: data.node.name, previous: around.previous, next: around.next, go: { id = $0 })
 				)
-				.padding(.bottom, 8)
+				.padding(.bottom, 96)
 			}
 		}
-		.navigationBarTitleDisplayMode(.inline)
 	}
 }
 
@@ -141,23 +128,23 @@ private struct Header: View {
 	var body: some View {
 		VStack(alignment: .leading, spacing: 16) {
 			HStack(alignment: .center, spacing: 14) {
-				CategoryIcon(name: data.node.icon, size: 58, onGradient: true)
+				CategoryIcon(name: data.node.icon, size: 56, onGradient: true)
 				VStack(alignment: .leading, spacing: 2) {
 					if !data.node.path.isEmpty {
-						Text(data.node.path.joined(separator: " › ")).font(.subheadline).opacity(0.8)
+						Text(data.node.path.joined(separator: " › ")).font(.vSub).opacity(0.8)
 					}
-					Text(data.node.name).font(.title.bold()).lineLimit(2).minimumScaleFactor(0.75)
-					Text(where_).font(.subheadline).opacity(0.8)
+					Text(data.node.name).vertexTekst(Vertex.Tekst.titelM).lineLimit(2).minimumScaleFactor(0.75)
+					Text(where_).font(.vSub).opacity(0.8)
 				}
 			}
 			// Bij een spaardoel staat het doel meteen bovenaan.
 			if let goal = data.goal {
 				Text("Doel \(Format.money(goal.target))\(goal.date.map { " · \(Format.goalDate($0))" } ?? "")")
-					.font(.headline)
+					.font(.vHeadline)
 			}
 			VStack(alignment: .leading, spacing: 2) {
-				Text("\(headline.0) in \(Format.month(data.month, year: false))").font(.subheadline).opacity(0.85)
-				Text(Format.money(headline.1)).font(.system(size: 34, weight: .bold).monospacedDigit())
+				Text("\(headline.0) in \(Format.month(data.month, year: false))").font(.vSub).opacity(0.85)
+				Text(Format.money(headline.1)).vertexTekst(Vertex.Tekst.titelL).monospacedDigit()
 			}
 			if let goal = data.goal {
 				VStack(alignment: .leading, spacing: 6) {
@@ -169,7 +156,7 @@ private struct Header: View {
 					}
 					.frame(height: 8)
 					Text("\(Int(goal.progress * 100))% bereikt\(goal.perMonth.map { " · nog \(Format.money($0)) per maand" } ?? "")")
-						.font(.subheadline)
+						.font(.vSub)
 						.opacity(0.85)
 				}
 			}
@@ -177,7 +164,8 @@ private struct Header: View {
 		.foregroundStyle(.white)
 		.padding(22)
 		.frame(maxWidth: .infinity, alignment: .leading)
-		.background(.staxGradient, in: RoundedRectangle(cornerRadius: 24, style: .continuous))
+		.background(Vertex.verloopAccent, in: RoundedRectangle(cornerRadius: 24, style: .continuous))
+		.vertexAccentSchaduw()
 	}
 }
 
@@ -186,29 +174,46 @@ private struct Figures: View {
 
 	var body: some View {
 		let f = data.figures
-		LabeledContent("Gebudgetteerd", value: Format.money(f.plan))
+		VRegel("Gebudgetteerd", value: Format.money(f.plan))
 		if !data.node.group && data.node.kind != "budget" && data.node.tree != "inkomsten" {
-			LabeledContent("Erin", value: Format.signed(f.inleg))
+			VRegel("Erin", value: Format.signed(f.inleg))
 		}
-		LabeledContent(data.node.tree == "inkomsten" ? "Ontvangen" : "Uitgegeven", value: Format.money(f.spent))
+		VRegel(data.node.tree == "inkomsten" ? "Ontvangen" : "Uitgegeven", value: Format.money(f.spent))
 		if f.outside > 0 {
-			LabeledContent("Waarvan van de lopende rekening", value: Format.money(f.outside))
+			VRegel("Waarvan van de lopende rekening", value: Format.money(f.outside))
 		}
 		if data.node.tree != "inkomsten" {
-			LabeledContent("Balans", value: Format.money(f.balance))
+			VRegel("Balans") { Text(Format.money(f.balance)).foregroundStyle((f.balance ?? 0) < 0 ? Vertex.Kleur.statusNegatief : Vertex.Kleur.tekstHoofd) }
 		}
 		if f.toWithdraw > 0 {
 			VStack(alignment: .leading, spacing: 4) {
-				LabeledContent("Nog op te nemen van de spaarrekening", value: Format.money(f.toWithdraw))
+				VRegel("Nog op te nemen van de spaarrekening", value: Format.money(f.toWithdraw))
 				Text("Je hebt dit bedrag voorgeschoten van de lopende rekening, terwijl het uit deze pot komt. Maak het over van de spaarrekening en koppel die opname aan dit budget; dan verdwijnt deze regel.")
-					.font(.footnote)
-					.foregroundStyle(.secondary)
+					.vertexTekst(Vertex.Tekst.klein)
+					.foregroundStyle(Vertex.Kleur.tekstGedempt)
 			}
 		}
 		if let expected = data.goal?.expected, let balance = f.balance {
-			LabeledContent(balance >= expected ? "Voor op schema" : "Achter op schema", value: Format.money(abs(balance - expected)))
+			VRegel(balance >= expected ? "Voor op schema" : "Achter op schema", value: Format.money(abs(balance - expected)))
 		}
 	}
+}
+
+/// Rij in de cijferkaart: label links, bedrag rechts in semibold.
+private struct VRegel<Waarde: View>: View {
+	let label: String
+	let waarde: Waarde
+	init(_ label: String, @ViewBuilder content: () -> Waarde) { self.label = label; self.waarde = content() }
+	var body: some View {
+		HStack(spacing: 12) {
+			Text(label)
+			Spacer(minLength: 8)
+			waarde.vertexTekst(Vertex.Tekst.bodyVet).monospacedDigit()
+		}
+	}
+}
+extension VRegel where Waarde == Text {
+	init(_ label: String, value: String) { self.init(label) { Text(value) } }
 }
 
 private struct History: View {
@@ -221,17 +226,17 @@ private struct History: View {
 			let label = String(Format.month(p.month, year: false).prefix(3))
 			if balances {
 				AreaMark(x: .value("Maand", label), y: .value("Balans", Double(p.balance ?? 0) / 100))
-					.foregroundStyle(.staxGradient.opacity(0.25))
+					.foregroundStyle(Vertex.Kleur.accentVlak.opacity(0.2))
 				LineMark(x: .value("Maand", label), y: .value("Balans", Double(p.balance ?? 0) / 100))
-					.foregroundStyle(Color.stax)
+					.foregroundStyle(Vertex.Kleur.accentStandaard)
 			} else {
 				BarMark(x: .value("Maand", label), y: .value("Bedrag", Double(p.spent) / 100))
-					.foregroundStyle(.staxGradient)
-					.cornerRadius(4)
+					.foregroundStyle(Vertex.Kleur.accentVlak)
+					.cornerRadius(8)
 				if p.plan > 0 {
 					// Streepje op de hoogte van het budget van die maand.
 					RectangleMark(x: .value("Maand", label), y: .value("Budget", Double(p.plan) / 100), width: .ratio(0.8), height: 2)
-						.foregroundStyle(.secondary)
+						.foregroundStyle(Vertex.Kleur.tekstGedempt)
 				}
 			}
 		}

@@ -1,4 +1,5 @@
 <script lang="ts">
+	import { Terugknop } from 'vertex/web';
 	import { enhance } from '$app/forms';
 	import Icon from '$lib/components/Icon.svelte';
 
@@ -10,7 +11,7 @@
 
 <div class="stack">
 	<header>
-		<a class="link back" href="/instellingen"><Icon name="left" size={18} /> Instellingen</a>
+		<Terugknop href="/instellingen">Instellingen</Terugknop>
 		<h1>Back-up</h1>
 		<p class="muted">Eén bestand met al je gegevens: rekeningen, boekingen, budgetten, regels en startsaldo. Zonder inloggegevens. Het past ook in de app op je telefoon.</p>
 	</header>
@@ -18,7 +19,7 @@
 	<section class="card pad">
 		<h2>Back-up maken</h2>
 		<p class="muted">Nu {data.transactions} boekingen op {data.accounts} {data.accounts === 1 ? 'rekening' : 'rekeningen'}. Bewaar het bestand op een veilige plek, het bevat je hele financiële administratie.</p>
-		<a class="button" href="/instellingen/backup/bestand" data-sveltekit-reload><Icon name="upload" size={16} /> Back-up downloaden</a>
+		<a class="btn primary" href="/instellingen/backup/bestand" data-sveltekit-reload><Icon name="download" size={16} /> Back-up downloaden</a>
 	</section>
 
 	<section class="card pad">
@@ -75,7 +76,8 @@
 	.ok {
 		color: var(--ok, #2e7d32);
 	}
-	.button {
+	.btn,
+	.danger {
 		justify-self: start;
 	}
 </style>

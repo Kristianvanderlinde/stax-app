@@ -196,7 +196,11 @@ const MIGRATIONS: (string | ((db: DatabaseSync) => void))[] = [
 	);
 	`,
 	// v9: twee niveaus. Bij uitgaven een groep met budgetten erin, bij inkomsten alleen budgetten; geen groepen in groepen.
-	twoLevels
+	twoLevels,
+	// v10: een groep kiest zelf zijn kleur (accent, lucht, koraal, mint of zon); leeg = automatisch op volgorde.
+	`
+	ALTER TABLE categories ADD COLUMN color TEXT;
+	`
 ];
 
 function open(): DatabaseSync {

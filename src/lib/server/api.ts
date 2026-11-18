@@ -2,6 +2,7 @@ import { db } from './db';
 import { isGroup, loadTree, subtreeIds } from './categories';
 import { Ledger, accountBalance, incomeSummary, accounts, currentMonth, isOpenSql, lastBookingDate, monthEnd, monthRows, openCounts, plannedTotal, rowsUnder, shiftMonth } from './reports';
 import { openRefunds } from './refunds';
+import { hueMap } from './hues';
 import { figures, type Figures } from '$lib/figures';
 import { kindOf, kindTag, type NodeStats } from '$lib/types';
 
@@ -10,6 +11,8 @@ import { kindOf, kindTag, type NodeStats } from '$lib/types';
 
 export interface ApiRow {
 	id: number;
+	/** Kleur van de groep waar dit bij hoort: accent, lucht, koraal, mint of zon. */
+	hue: string;
 	name: string;
 	icon: string | null;
 	/** Inspringing binnen de groep: 0 direct eronder. */
@@ -31,10 +34,11 @@ function subtitle(n: NodeStats, f: Figures): string {
 	return kindTag(f.kind);
 }
 
-function row(n: NodeStats, level = 0): ApiRow {
+function row(n: NodeStats, level = 0, hues: Map<number, string>): ApiRow {
 	const f = figures(n);
 	return {
 		id: n.id,
+		hue: hues.get(n.id) ?? 'accent',
 		name: n.name,
 		icon: n.icon,
 		level,
@@ -60,6 +64,7 @@ function defaultMonth(month: string | null): string {
 /** Budgetoverzicht van één maand. */
 export function overview(monthParam: string | null) {
 	const month = defaultMonth(monthParam);
+	const hues = hueMap();
 	const { uitgaven, inkomsten } = new Ledger(loadTree()).month(month);
 	const planned = plannedTotal(uitgaven);
 	const refunds = openRefunds();
@@ -82,9 +87,9 @@ export function overview(monthParam: string | null) {
 		/** Alle boekingen die nog ingedeeld moeten worden, over alle maanden (voor het bolletje bij Boekingen). */
 		openTotal: (db.prepare(`SELECT COUNT(*) AS n FROM transactions t JOIN accounts a ON a.id = t.account_id WHERE ${isOpenSql()}`).get() as { n: number }).n,
 		refunds: { n: refunds.length, cents: refunds.reduce((s, e) => s + e.expected - e.received, 0) },
-		groups: monthRows(uitgaven).map(({ group, rows }) => ({ ...row(group), rows: rows.map((r) => row(r.node, r.level)) })),
+		groups: monthRows(uitgaven).map(({ group, rows }) => ({ ...row(group, 0, hues), rows: rows.map((r) => row(r.node, r.level, hues)) })),
 		/** Inkomstenrijen: plan is het verwachte bedrag, net wat er binnenkwam. */
-		income: rowsUnder(inkomsten).map((r) => row(r.node, r.level))
+		income: rowsUnder(inkomsten).map((r) => row(r.node, r.level, hues))
 	};
 }
 
@@ -92,6 +97,7 @@ export function overview(monthParam: string | null) {
 export function savings() {
 	const last = lastBookingDate();
 	const month = last?.slice(0, 7) ?? currentMonth();
+	const hues = hueMap();
 	const { uitgaven } = new Ledger(loadTree()).month(month);
 	const end = monthEnd(month);
 	const balanceDate = last && last < end ? last : end;
@@ -102,11 +108,11 @@ export function savings() {
 		.map((g) => {
 			const pots: (ApiRow & { path: string; funding: string })[] = [];
 			const walk = (n: NodeStats, path: string[]) => {
-				if (n.isPot) pots.push({ ...row(n), path: path.join(' › '), funding: n.funding });
+				if (n.isPot) pots.push({ ...row(n, 0, hues), path: path.join(' › '), funding: n.funding });
 				n.children.forEach((c) => walk(c, n === g ? [] : [...path, n.name]));
 			};
 			walk(g, []);
-			return { id: g.id, name: g.name, icon: g.icon, group: g.children.length > 0, total: g.pot, pots };
+			return { id: g.id, hue: hues.get(g.id) ?? 'accent', name: g.name, icon: g.icon, group: g.children.length > 0, total: g.pot, pots };
 		});
 	return {
 		balanceDate,
@@ -133,6 +139,7 @@ export function budget(id: number, monthParam: string | null) {
 	const tree = loadTree();
 	const node = tree.byId.get(id);
 	if (!node) return null;
+	const hues = hueMap();
 	const ledger = new Ledger(tree);
 	const month = defaultMonth(monthParam);
 	const root = (m: string) => (node.tree === 'inkomsten' ? ledger.month(m).inkomsten : ledger.month(m).uitgaven);
@@ -159,6 +166,7 @@ export function budget(id: number, monthParam: string | null) {
 		months: months(),
 		node: {
 			id,
+			hue: hues.get(id) ?? 'accent',
 			name: node.name,
 			path: node.path,
 			icon: node.effIcon,
@@ -171,6 +179,7 @@ export function budget(id: number, monthParam: string | null) {
 		edit: {
 			parentId: node.parent_id,
 			ownIcon: node.icon,
+			ownColor: node.color,
 			funding: node.funding,
 			goalCents: node.goal_cents,
 			goalDate: node.goal_date,
@@ -185,7 +194,7 @@ export function budget(id: number, monthParam: string | null) {
 		goal: stats.goal,
 		history,
 		bookings: bookings.map((b) => ({ ...b, transfer: !!b.transfer })),
-		children: node.children.length ? rowsUnder(stats).map((r) => row(r.node, r.level)) : []
+		children: node.children.length ? rowsUnder(stats).map((r) => row(r.node, r.level, hues)) : []
 	};
 }
 
@@ -199,7 +208,8 @@ export function groupChoices() {
 /** Groepen met hun budgetten en de inkomstenbronnen, in de volgorde van de website, om te ordenen. */
 export function ordering() {
 	const tree = loadTree();
-	const item = (n: { id: number; name: string; effIcon: string | null }) => ({ id: n.id, name: n.name, icon: n.effIcon });
+	const hues = hueMap();
+	const item = (n: { id: number; name: string; effIcon: string | null }) => ({ id: n.id, name: n.name, icon: n.effIcon, hue: hues.get(n.id) ?? 'accent' });
 	return {
 		expensesRoot: tree.roots.uitgaven.id,
 		incomeRoot: tree.roots.inkomsten.id,

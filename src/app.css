@@ -1,69 +1,42 @@
+@import 'vertex/tokens.css';
+
 @font-face {
 	font-family: 'Stax';
 	src: url('/fonts/stax.ttf') format('truetype');
 	font-display: swap;
 }
 
-/* Kleuren in de stijl van iOS: grijze achtergrond, witte groepen, paars als merkkleur. */
+/* Design system: kleuren, hoogtes, schaduwen en tekststijlen komen uit het pakket vertex
+   (map ../vertex, tokens/tokens.json). De namen hieronder zijn de oude namen die de pagina's nog gebruiken;
+   ze verwijzen naar de nieuwe tokens, zodat de hele app meeverandert. */
 :root {
-	--bg: #f2f2f7;
-	--surface: #ffffff;
-	--surface-2: #f2f2f7;
-	--fill: rgb(120 120 128 / 0.12);
-	--text: #1c1c1e;
-	--muted: #6e6e73;
-	--faint: #aeaeb2;
-	--line: rgb(60 60 67 / 0.12);
-	--accent: #6a55dc;
-	--accent-2: #9c84f4;
-	--gradient: linear-gradient(150deg, #a690f7 0%, #6a55dc 100%);
-	--gradient-2: linear-gradient(150deg, #8b9bf8 0%, #5048cf 100%);
-	--accent-soft: #efebfd;
-	--on-accent: #ffffff;
-	--chart: #6a55dc;
-	--seg-on: #ffffff;
-	--pos: #248a3d;
-	--neg: #d70015;
-	--warn: #b25000;
-	--warn-soft: #fff4e5;
-	--neg-soft: #ffe9eb;
-	--radius: 20px;
-	--radius-sm: 12px;
-	--shadow: 0 1px 2px rgb(0 0 0 / 0.04), 0 4px 18px rgb(0 0 0 / 0.04);
-	--shadow-hover: 0 2px 4px rgb(0 0 0 / 0.05), 0 12px 32px rgb(40 30 90 / 0.1);
-	--float: 0 10px 36px rgb(40 30 90 / 0.14);
+	--bg: var(--achtergrond-pagina);
+	--surface: var(--hoogte-1-vlak);
+	--surface-2: var(--achtergrond-kaart-2);
+	--fill: var(--achtergrond-vlak);
+	--text: var(--tekst-hoofd);
+	--muted: var(--tekst-gedempt);
+	--faint: var(--tekst-vaag);
+	--line: var(--lijn-standaard);
+	--accent: var(--accent-standaard);
+	--accent-2: var(--accent-standaard);
+	--gradient: var(--verloop-accent);
+	--gradient-2: var(--verloop-accent);
+	--accent-soft: var(--accent-zacht);
+	--on-accent: var(--tekst-op-accent);
+	--chart: var(--accent-standaard);
+	--seg-on: var(--hoogte-2-vlak);
+	--pos: var(--status-positief);
+	--neg: var(--status-negatief);
+	--warn: var(--status-waarschuwing);
+	--warn-soft: var(--status-waarschuwing-zacht);
+	--neg-soft: var(--status-negatief-zacht);
+	--radius: var(--vorm-xl);
+	--radius-sm: var(--vorm-md);
+	--shadow: var(--schaduw-hoogte-1);
+	--shadow-hover: var(--schaduw-hoogte-3);
+	--float: var(--schaduw-hoogte-4);
 	--ease: cubic-bezier(0.2, 0.8, 0.2, 1);
-	color-scheme: light;
-}
-
-@media (prefers-color-scheme: dark) {
-	:root {
-		--bg: #000000;
-		--surface: #1c1c1e;
-		--surface-2: #2c2c2e;
-		--fill: rgb(120 120 128 / 0.24);
-		--text: #f5f5f7;
-		--muted: #98989d;
-		--faint: #636366;
-		--line: rgb(84 84 88 / 0.55);
-		--accent: #a897ff;
-		--accent-2: #c3b6ff;
-		--gradient: linear-gradient(150deg, #8f78f0 0%, #5442c9 100%);
-		--gradient-2: linear-gradient(150deg, #6f7ff0 0%, #3e37b5 100%);
-		--accent-soft: rgb(168 151 255 / 0.16);
-		--on-accent: #ffffff;
-		--chart: #9280f2;
-		--seg-on: #636366;
-		--pos: #30d158;
-		--neg: #ff6961;
-		--warn: #ffb340;
-		--warn-soft: rgb(255 179 64 / 0.14);
-		--neg-soft: rgb(255 105 97 / 0.14);
-		--shadow: none;
-		--shadow-hover: 0 0 0 1px rgb(255 255 255 / 0.08);
-		--float: 0 10px 36px rgb(0 0 0 / 0.6);
-		color-scheme: dark;
-	}
 }
 
 * {
@@ -77,11 +50,11 @@ html {
 
 body {
 	margin: 0;
-	background: var(--bg);
 	color: var(--text);
-	font: 15px/1.45 -apple-system, BlinkMacSystemFont, 'SF Pro Text', system-ui, 'Segoe UI', Roboto, sans-serif;
-	letter-spacing: -0.006em;
+	font: 400 15px/22px var(--tekst-familie);
 	-webkit-font-smoothing: antialiased;
+	/* Gloed bovenaan elke pagina, zoals in het ontwerp. */
+	background: var(--verloop-gloed) no-repeat top / 100% 300px, var(--bg);
 }
 
 h1,
@@ -89,22 +62,22 @@ h2,
 h3 {
 	margin: 0;
 	line-height: 1.15;
-	font-family: -apple-system, BlinkMacSystemFont, 'SF Pro Display', system-ui, sans-serif;
+	font-family: var(--tekst-familie);
 }
 h1 {
 	font-size: 34px;
+	line-height: 40px;
 	font-weight: 700;
-	letter-spacing: -0.03em;
 }
 h2 {
 	font-size: 22px;
+	line-height: 28px;
 	font-weight: 700;
-	letter-spacing: -0.02em;
 }
 h3 {
 	font-size: 17px;
+	line-height: 24px;
 	font-weight: 600;
-	letter-spacing: -0.015em;
 }
 
 a {
@@ -140,6 +113,7 @@ a {
 /* Kaarten en groepen */
 .card {
 	background: var(--surface);
+	border: 1px solid var(--hoogte-1-rand);
 	border-radius: var(--radius);
 	box-shadow: var(--shadow);
 }
@@ -166,6 +140,7 @@ button.card:active {
 	margin: 0;
 	padding: 0;
 	background: var(--surface);
+	border: 1px solid var(--hoogte-1-rand);
 	border-radius: var(--radius);
 	box-shadow: var(--shadow);
 	overflow: hidden;
@@ -206,10 +181,11 @@ button.card:active {
 	color: transparent;
 }
 
+
 .stack {
 	display: flex;
 	flex-direction: column;
-	gap: 28px;
+	gap: var(--ruimte-6);
 }
 
 .section-head {
@@ -222,57 +198,35 @@ button.card:active {
 
 .grid {
 	display: grid;
-	gap: 14px;
+	gap: var(--ruimte-4);
 	grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
 }
 
-/* Terug naar het bovenliggende scherm; op een telefoon alleen het pijltje. */
-a.back {
-	display: inline-flex;
-	align-items: center;
-	gap: 2px;
-	font-size: 17px;
-	margin-left: -4px;
-}
-@media (max-width: 600px) {
-	a.back {
-		font-size: 0;
-	}
-	a.back svg {
-		width: 24px;
-		height: 24px;
-	}
-}
-/* Op de instellingenpagina's: iets ruimte tussen de knop en de titel. */
-header > a.back + h1 {
-	margin-top: 10px;
-}
-
-/* Knoppen */
+/* Knoppen, naar het ontwerp: zacht accent als standaard, primair met verloop, icoonknoppen rond met schaduw. */
 button,
 .btn {
 	font: inherit;
 	display: inline-flex;
 	align-items: center;
 	justify-content: center;
-	gap: 6px;
-	min-height: 40px;
-	padding: 0 16px;
-	border-radius: 999px;
+	gap: var(--ruimte-2);
+	min-height: 44px;
+	padding: 0 var(--ruimte-5);
+	border-radius: 14px;
 	border: 0;
-	background: var(--fill);
-	color: var(--text);
-	font-weight: 590;
+	background: var(--accent-soft);
+	color: var(--accent);
+	font-weight: 600;
 	cursor: pointer;
 	white-space: nowrap;
 	transition:
-		background-color 0.15s,
+		filter 0.15s,
 		opacity 0.15s,
 		transform 0.15s;
 }
 button:hover,
 .btn:hover {
-	background: color-mix(in srgb, var(--fill) 100%, var(--text) 6%);
+	filter: brightness(0.97);
 }
 button:active,
 .btn:active {
@@ -280,13 +234,13 @@ button:active,
 }
 button.primary,
 .btn.primary {
-	background: var(--gradient);
-	color: var(--on-accent);
-	box-shadow: 0 4px 14px rgb(106 85 220 / 0.3);
+	background: var(--verloop-accent);
+	color: var(--tekst-op-accent);
+	box-shadow: var(--schaduw-accent);
 }
 button.primary:hover,
 .btn.primary:hover {
-	filter: brightness(1.06);
+	filter: brightness(1.08);
 }
 button.ghost,
 .btn.ghost {
@@ -296,12 +250,14 @@ button.ghost,
 button.ghost:hover,
 .btn.ghost:hover {
 	background: var(--accent-soft);
+	filter: none;
 }
 button.danger {
+	background: var(--neg-soft);
 	color: var(--neg);
 }
 button:disabled {
-	opacity: 0.35;
+	opacity: 0.4;
 	cursor: default;
 	transform: none;
 }
@@ -309,6 +265,18 @@ button.icon,
 .btn.icon {
 	padding: 0;
 	width: 40px;
+	min-height: 40px;
+	border-radius: 50%;
+	background: var(--hoogte-2-vlak);
+	border: 1px solid var(--hoogte-2-rand);
+	box-shadow: var(--schaduw-hoogte-2);
+	color: var(--accent);
+}
+button.icon.ghost,
+.btn.icon.ghost {
+	background: transparent;
+	border-color: transparent;
+	box-shadow: none;
 }
 /* Kale knop voor rijen en kaarten die zelf al opgemaakt zijn. */
 button.plain {
@@ -321,21 +289,34 @@ button.plain:focus-visible {
 	outline-offset: -2px;
 }
 
-/* Invoer */
+/* Invoer: gevuld vlak zonder rand, zoals het invoerveld in Figma. */
 input,
 select,
 textarea {
 	font: inherit;
 	color: var(--text);
-	background: var(--surface);
-	border: 1px solid var(--line);
-	border-radius: var(--radius-sm);
-	min-height: 44px;
-	padding: 9px 13px;
+	background: var(--surface-2);
+	border: 1px solid transparent;
+	border-radius: var(--vorm-md);
+	min-height: 46px;
+	padding: 11px var(--ruimte-4);
 	width: 100%;
 	transition:
 		border-color 0.15s,
 		box-shadow 0.15s;
+}
+.card input,
+.card select,
+.card textarea {
+	border-color: var(--line);
+}
+select {
+	appearance: none;
+	-webkit-appearance: none;
+	padding-right: 40px;
+	background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='20' height='20' viewBox='0 0 24 24' fill='none' stroke='%23998d99' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M6 9.5l6 6 6-6'/%3E%3C/svg%3E");
+	background-repeat: no-repeat;
+	background-position: right 12px center;
 }
 input:focus,
 select:focus,
@@ -351,12 +332,29 @@ a:focus-visible {
 	outline-offset: 2px;
 }
 input[type='checkbox'] {
-	width: 20px;
-	min-height: 20px;
-	height: 20px;
-	accent-color: var(--accent);
+	appearance: none;
+	-webkit-appearance: none;
+	flex-shrink: 0;
+	width: 22px;
+	min-height: 22px;
+	height: 22px;
 	padding: 0;
+	border: 2px solid var(--faint);
+	border-radius: 7px;
+	background: var(--surface);
 	box-shadow: none;
+	cursor: pointer;
+}
+input[type='checkbox']:checked {
+	border-color: transparent;
+	background-color: var(--accent-vlak);
+	background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='white' stroke-width='3.2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M5 12.5 10 17.5 19 7'/%3E%3C/svg%3E");
+	background-size: 80%;
+	background-position: center;
+	background-repeat: no-repeat;
+}
+input[type='checkbox']:focus {
+	box-shadow: 0 0 0 4px var(--accent-soft);
 }
 
 label.field {
@@ -366,6 +364,35 @@ label.field {
 	font-size: 13px;
 	font-weight: 500;
 	color: var(--muted);
+}
+/* Het label is klein, maar wat je invult hoort op gewone tekstgrootte te staan. */
+.field input,
+.field select,
+.field textarea {
+	font-size: 15px;
+	font-weight: 400;
+	color: var(--text);
+}
+/* Bestandsveld en datumveld in de stijl van de rest, niet van de browser. */
+input[type='file'] {
+	padding: 6px;
+	color: var(--muted);
+}
+input[type='file']::file-selector-button {
+	font: inherit;
+	font-weight: 600;
+	min-height: 34px;
+	margin-right: 12px;
+	padding: 0 14px;
+	border: 0;
+	border-radius: 10px;
+	background: var(--accent-soft);
+	color: var(--accent);
+	cursor: pointer;
+}
+input[type='date']::-webkit-calendar-picker-indicator {
+	cursor: pointer;
+	opacity: 0.6;
 }
 label.check {
 	display: flex;
@@ -447,8 +474,8 @@ label.check {
 /* Voortgangsbalk */
 .bar {
 	height: 8px;
-	border-radius: 99px;
-	background: var(--fill);
+	border-radius: 4px;
+	background: var(--accent-soft);
 	overflow: hidden;
 }
 .bar > span {
@@ -458,18 +485,38 @@ label.check {
 	background: var(--gradient);
 	transition: width 0.6s var(--ease);
 }
+.bar.over {
+	background: var(--neg-soft);
+}
 .bar.over > span {
 	background: var(--neg);
 }
 
 /* Rond icoon zoals in het oude Stax-ontwerp */
+/* Tegel met een icoon in de kleur van de groep: --tint, --tint-fg en --solid komen uit hue.ts. */
+.tegel {
+	flex: none;
+	display: grid;
+	place-items: center;
+	width: 34px;
+	height: 34px;
+	border-radius: var(--vorm-md);
+	background: var(--tint, var(--accent-zacht));
+	color: var(--tint-fg, var(--accent-standaard));
+}
+.tegel.groep {
+	background: var(--solid, var(--verloop-accent));
+	color: var(--solid-fg, var(--tekst-op-accent));
+}
+
+/* Tegel met icoon (rond in het oude ontwerp, nu afgerond vierkant zoals in Figma). */
 .avatar {
 	display: grid;
 	place-items: center;
 	flex-shrink: 0;
-	width: 44px;
-	height: 44px;
-	border-radius: 50%;
+	width: 40px;
+	height: 40px;
+	border-radius: 14px;
 	background: var(--gradient);
 	color: #fff;
 }
@@ -478,8 +525,9 @@ label.check {
 	color: var(--accent);
 }
 .avatar.sm {
-	width: 32px;
-	height: 32px;
+	width: 34px;
+	height: 34px;
+	border-radius: 12px;
 }
 
 .empty {
@@ -509,16 +557,18 @@ label.check {
 	display: grid;
 	place-items: center;
 	padding: 32px 16px;
+	background: var(--verloop-gloed) no-repeat top / 100% 420px;
 }
 .auth-card {
 	width: min(420px, 100%);
 	display: flex;
 	flex-direction: column;
 	gap: 16px;
-	padding: 28px;
-	border-radius: 26px;
-	background: var(--surface);
-	box-shadow: var(--float);
+	padding: var(--ruimte-8);
+	border-radius: var(--vorm-xxl);
+	background: var(--hoogte-4-vlak);
+	border: 1px solid var(--hoogte-4-rand);
+	box-shadow: var(--schaduw-hoogte-4);
 }
 .auth-card.wide {
 	width: min(560px, 100%);
@@ -527,7 +577,7 @@ label.check {
 	width: 56px;
 	height: 56px;
 	border-radius: 15px;
-	box-shadow: 0 8px 22px rgb(90 70 220 / 0.3);
+	box-shadow: var(--schaduw-accent);
 }
 .auth-card h1 {
 	margin: 4px 0 0;

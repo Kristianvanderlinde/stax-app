@@ -1,4 +1,5 @@
 <script lang="ts">
+	import { Terugknop } from 'vertex/web';
 	import { afterNavigate } from '$app/navigation';
 	import AreaChart from '$lib/components/AreaChart.svelte';
 	import MonthList from '$lib/components/MonthList.svelte';
@@ -67,7 +68,7 @@
 
 <div class="stack">
 	<header class="top">
-		<a class="link back" href={back.href}><Icon name="left" size={18} /> {back.label}</a>
+		<Terugknop href={back.href}>{back.label}</Terugknop>
 		<!-- Instellen gebeurt op één plek: Instellingen → Budgetten. -->
 		<a class="btn" href="/instellingen/budgetten?bewerk={data.node.id}"><Icon name="settings" size={16} /> Instellen</a>
 	</header>
@@ -261,12 +262,12 @@
 		display: flex;
 		flex-wrap: wrap;
 		align-items: center;
-		gap: 22px 44px;
-		padding: 26px;
-		border-radius: 28px;
-		background: var(--gradient);
-		color: #fff;
-		box-shadow: 0 16px 40px rgb(106 85 220 / 0.28);
+		gap: var(--ruimte-6) var(--ruimte-10);
+		padding: 28px;
+		border-radius: var(--vorm-xxl);
+		background: var(--verloop-accent);
+		color: var(--tekst-op-accent);
+		box-shadow: var(--schaduw-accent);
 	}
 	.hero-main {
 		display: flex;
@@ -288,7 +289,7 @@
 		opacity: 0.85;
 	}
 	.hero h1 {
-		font-size: 32px;
+		font: 700 28px/34px var(--tekst-familie);
 	}
 	.hero-balance {
 		display: flex;
@@ -299,10 +300,7 @@
 		font-size: 14px;
 	}
 	.hero-balance strong {
-		font-size: 44px;
-		font-weight: 700;
-		letter-spacing: -0.035em;
-		line-height: 1.1;
+		font: 700 34px/40px var(--tekst-familie);
 	}
 	.ring {
 		display: flex;
@@ -334,26 +332,23 @@
 	.tiles {
 		display: grid;
 		grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
-		gap: 14px;
+		gap: var(--ruimte-4);
 	}
 	.tile {
 		display: flex;
 		flex-direction: column;
-		gap: 3px;
-		padding: 18px;
+		gap: var(--ruimte-2);
+		padding: var(--ruimte-5);
 	}
 	.label {
-		color: var(--accent);
-		font-size: 14px;
-		font-weight: 600;
+		color: var(--muted);
+		font: 600 15px/22px var(--tekst-familie);
 	}
 	.tile {
 		position: relative;
 	}
 	.edit {
-		position: absolute;
-		top: 10px;
-		right: 10px;
+		align-self: flex-start;
 	}
 	.dev {
 		margin-right: 6px;
@@ -361,12 +356,10 @@
 		padding: 1px 7px;
 	}
 	.tile strong {
-		font-size: 26px;
-		font-weight: 700;
-		letter-spacing: -0.03em;
+		font: 700 28px/34px var(--tekst-familie);
 	}
 	.chartcard {
-		padding: 20px 20px 12px;
+		padding: var(--ruimte-6);
 	}
 	.chartcard .section-head {
 		margin: 0 0 8px;
@@ -382,11 +375,11 @@
 		opacity: 0.55;
 	}
 	.chartcard h2 {
-		font-size: 18px;
+		font: 700 22px/28px var(--tekst-familie);
 	}
 	.cols {
 		display: grid;
-		gap: 28px;
+		gap: var(--ruimte-6);
 	}
 	@media (min-width: 1000px) {
 		.cols {
@@ -401,19 +394,18 @@
 	table {
 		width: 100%;
 		border-collapse: collapse;
-		font-size: 14px;
+		font-size: 15px;
 	}
 	th {
 		text-align: right;
-		font-weight: 500;
+		font: 600 12px/16px var(--tekst-familie);
 		color: var(--muted);
-		font-size: 13px;
-		padding: 10px 16px 8px;
+		padding: var(--ruimte-3) var(--ruimte-5);
+		border-bottom: 1px solid var(--line);
 	}
 	td {
 		text-align: right;
-		padding: 9px 16px;
-		border-top: 0.5px solid var(--line);
+		padding: 11px var(--ruimte-5);
 	}
 	th:first-child,
 	td:first-child {
@@ -422,6 +414,8 @@
 	}
 	tr.current td {
 		background: var(--accent-soft);
+		color: var(--accent);
+		font-weight: 600;
 	}
 	td a:hover {
 		color: var(--accent);

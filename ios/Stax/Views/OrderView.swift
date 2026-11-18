@@ -8,6 +8,13 @@ struct OrderView: View {
 	@State private var error: String?
 	@State private var editing: BudgetDetail?
 	@State private var adding: Adding?
+	/// Slepen: de rij die je vasthoudt, hoe ver hij van zijn plek is, en wat er na het loslaten naar de server moet.
+	@State private var sleep: String?
+	@State private var sleepVerschuiving: CGFloat = 0
+	@State private var sleepVerzet: CGFloat = 0
+	/// Afstand van rij tot rij: rij plus scheidingslijn.
+	private let rijHoogte: CGFloat = 55
+	@State private var naLoslaten: (() -> Void)?
 
 	private enum Adding: String, Identifiable {
 		case budget, group, income
@@ -19,48 +26,51 @@ struct OrderView: View {
 	var body: some View {
 		Group {
 			if let data {
-				List {
-					if let error { Section { Label(error, systemImage: "exclamationmark.triangle.fill").foregroundStyle(.red) } }
-					Section {
-						ForEach(data.groups) { g in row(g.id, g.name, g.icon) }
-							.onMove { from, to in moveGroup(from, to) }
-					} header: {
-						Text("Groepen")
-					} footer: {
-						Text("Tik op een rij om te bewerken. Sleep aan de streepjes om de volgorde te wijzigen.")
+				VertexScherm(
+					titel: "Budgetten", terug: "Instellingen", gloed: false,
+					acties: AnyView(
+						VertexMenu {
+							Button { adding = .budget } label: { Label("Nieuw budget", vSym: "plus.circle") }
+							Button { adding = .group } label: { Label("Nieuwe groep", vSym: "folder.badge.plus") }
+							Button { adding = .income } label: { Label("Nieuwe inkomsten", vSym: "arrow.down.circle") }
+						} label: {
+							VertexIcoonLabel(systeemIcoon: "plus")
+						}
+						.accessibilityLabel("Nieuw")
+					)
+				) {
+					Text("Tik op een rij om te bewerken. Sleep aan de streepjes om de volgorde te wijzigen.")
+						.vertexTekst(Vertex.Tekst.body).foregroundStyle(Vertex.Kleur.tekstGedempt)
+					if let error { VertexMelding(tekst: error, toon: .negatief) }
+					VertexSectiekop(titel: "Groepen")
+					VSection {
+						ForEach(data.groups) { g in
+							sortRow(g.id, g.name, g.icon, hue: g.hue, effen: true, tag: "g", ids: data.groups.map(\.id)) { from, to in moveGroup(from, to) }
+						}
 					}
 					ForEach(Array(data.groups.enumerated()), id: \.element.id) { index, g in
-						Section(g.name) {
-							ForEach(g.budgets) { b in row(b.id, b.name, b.icon) }
-								.onMove { from, to in moveBudget(group: index, from, to) }
+						VertexSectiekop(titel: g.name)
+						VSection {
+							ForEach(g.budgets) { b in
+								sortRow(b.id, b.name, b.icon, hue: b.hue, effen: false, tag: "b\(index)", ids: g.budgets.map(\.id)) { from, to in moveBudget(group: index, from, to) }
+							}
 						}
 					}
 					if !data.income.isEmpty {
-						Section("Inkomsten") {
-							ForEach(data.income) { i in row(i.id, i.name, i.icon) }
-								.onMove { from, to in moveIncome(from, to) }
+						VertexSectiekop(titel: "Inkomsten")
+						VSection {
+							ForEach(data.income) { i in
+								sortRow(i.id, i.name, i.icon, hue: i.hue, effen: false, tag: "i", ids: data.income.map(\.id)) { from, to in moveIncome(from, to) }
+							}
 						}
 					}
 				}
-				.environment(\.editMode, .constant(.active))
-				.toolbar {
-					ToolbarItem(placement: .topBarTrailing) {
-						Menu {
-							Button { adding = .budget } label: { Label("Nieuw budget", systemImage: "plus.circle") }
-							Button { adding = .group } label: { Label("Nieuwe groep", systemImage: "folder.badge.plus") }
-							Button { adding = .income } label: { Label("Nieuwe inkomsten", systemImage: "arrow.down.circle") }
-						} label: { Image(systemName: "plus") }
-						.accessibilityLabel("Nieuw")
-					}
-				}
 			} else if let error {
-				ContentUnavailableView("Kon Stax niet bereiken", systemImage: "wifi.exclamationmark", description: Text(error))
+				ContentUnavailableView { Label("Kon Stax niet bereiken", vSym: "wifi.exclamationmark") } description: { Text(error) }
 			} else {
 				ProgressView().frame(maxWidth: .infinity, maxHeight: .infinity)
 			}
 		}
-		.navigationTitle("Budgetten")
-		.navigationBarTitleDisplayMode(.inline)
 		.task { await load() }
 		.sheet(item: $editing, onDismiss: { Task { await load() } }) { d in
 			BudgetEditor(mode: .edit(d), month: d.month)
@@ -76,16 +86,56 @@ struct OrderView: View {
 		.onDisappear { session.revision += 1 }
 	}
 
-	private func row(_ id: Int, _ name: String, _ icon: String?) -> some View {
-		Button { open(id) } label: {
-			HStack(spacing: 12) {
-				CategoryIcon(name: icon, size: 32)
-				Text(name)
-				Spacer()
+	/// Rij met tegel en naam (tik = bewerken) en een handvat om te slepen. De rij volgt je vinger, de andere rijen schuiven mee opzij.
+	private func sortRow(_ id: Int, _ name: String, _ icon: String?, hue: String?, effen: Bool, tag: String, ids: [Int], move: @escaping (IndexSet, Int) -> Void) -> some View {
+		let sleutel = "\(tag):\(id)"
+		let vast = sleep == sleutel
+		return HStack(spacing: 12) {
+			Button { open(id) } label: {
+				HStack(spacing: 12) {
+					VertexTegel(image: iconImage(icon), hue: VertexHue(hue), effen: effen, maat: 38)
+					Text(name).vertexTekst(Vertex.Tekst.bodyVet).foregroundStyle(Vertex.Kleur.tekstHoofd)
+					Spacer(minLength: 8)
+				}
+				.contentShape(Rectangle())
 			}
-			.contentShape(Rectangle())
+			.buttonStyle(.plain)
+			VSym("line.3.horizontal", 15).foregroundStyle(vast ? Vertex.Kleur.accentStandaard : Vertex.Kleur.tekstVaag)
+				.frame(width: 44, height: 44)
+				.contentShape(Rectangle())
+				.gesture(
+					DragGesture(minimumDistance: 0, coordinateSpace: .global)
+						.onChanged { w in
+							if sleep == nil {
+								sleep = sleutel; sleepVerzet = 0
+								UIImpactFeedbackGenerator(style: .medium).impactOccurred()
+							}
+							guard sleep == sleutel, let van = ids.firstIndex(of: id) else { return }
+							let stappen = Int(((w.translation.height - sleepVerzet) / rijHoogte).rounded())
+							let naar = min(max(van + stappen, 0), ids.count - 1)
+							if naar != van {
+								withAnimation(.spring(duration: 0.28, bounce: 0.1)) { move(IndexSet(integer: van), naar > van ? naar + 1 : naar) }
+								sleepVerzet += CGFloat(naar - van) * rijHoogte
+								UISelectionFeedbackGenerator().selectionChanged()
+							}
+							sleepVerschuiving = w.translation.height - sleepVerzet
+						}
+						.onEnded { _ in
+							withAnimation(.spring(duration: 0.3, bounce: 0.12)) { sleepVerschuiving = 0; sleep = nil }
+							naLoslaten?(); naLoslaten = nil
+						}
+				)
+				.accessibilityLabel("\(name) verslepen")
 		}
-		.buttonStyle(.plain)
+		// De rij vult de hele breedte van de kaart (zelf padding), zodat hij als geheel opgetild wordt.
+		.padding(.horizontal, 16)
+		.frame(height: 54)
+		.vzonderPadding()
+		.background(vast ? Vertex.Kleur.hoogte2Vlak : Color.clear, in: RoundedRectangle(cornerRadius: 16, style: .continuous))
+		.scaleEffect(vast ? 1.02 : 1)
+		.offset(y: vast ? sleepVerschuiving : 0)
+		.shadow(color: vast ? Vertex.Kleur.schaduw : .clear, radius: 10, y: 6)
+		.zIndex(vast ? 1 : 0)
 	}
 
 	private func open(_ id: Int) {
@@ -107,7 +157,8 @@ struct OrderView: View {
 		let id = d.groups[i].id
 		d.groups.move(fromOffsets: from, toOffset: to)
 		data = d
-		send(id, parent: d.expensesRoot, in: d.groups.map(\.id))
+		let volgorde = d.groups.map(\.id); let ouder = d.expensesRoot
+		naLoslaten = { send(id, parent: ouder, in: volgorde) }
 	}
 
 	private func moveBudget(group: Int, _ from: IndexSet, _ to: Int) {
@@ -115,7 +166,8 @@ struct OrderView: View {
 		let id = d.groups[group].budgets[i].id
 		d.groups[group].budgets.move(fromOffsets: from, toOffset: to)
 		data = d
-		send(id, parent: d.groups[group].id, in: d.groups[group].budgets.map(\.id))
+		let volgorde = d.groups[group].budgets.map(\.id); let ouder = d.groups[group].id
+		naLoslaten = { send(id, parent: ouder, in: volgorde) }
 	}
 
 	private func moveIncome(_ from: IndexSet, _ to: Int) {
@@ -123,7 +175,8 @@ struct OrderView: View {
 		let id = d.income[i].id
 		d.income.move(fromOffsets: from, toOffset: to)
 		data = d
-		send(id, parent: d.incomeRoot, in: d.income.map(\.id))
+		let volgorde = d.income.map(\.id); let ouder = d.incomeRoot
+		naLoslaten = { send(id, parent: ouder, in: volgorde) }
 	}
 
 	/// Zet `id` op de plek die het nu in `order` heeft: vóór het volgende item, of achteraan.

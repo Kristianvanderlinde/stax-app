@@ -515,7 +515,11 @@ var Core = (() => {
 	);
 	`,
     // v9: twee niveaus. Bij uitgaven een groep met budgetten erin, bij inkomsten alleen budgetten; geen groepen in groepen.
-    twoLevels
+    twoLevels,
+    // v10: een groep kiest zelf zijn kleur (accent, lucht, koraal, mint of zon); leeg = automatisch op volgorde.
+    `
+	ALTER TABLE categories ADD COLUMN color TEXT;
+	`
   ];
   function open() {
     mkdirSync(DATA_DIR, { recursive: true });
@@ -641,6 +645,24 @@ var Core = (() => {
     GET: () => GET2
   });
 
+  // src/lib/hue.ts
+  var HUES = ["accent", "lucht", "koraal", "mint", "zon"];
+  var isHue = (v) => HUES.includes(v);
+
+  // src/lib/server/hues.ts
+  function hueMap() {
+    const rows = db.prepare("SELECT id, parent_id, tree, color FROM categories WHERE archived = 0 ORDER BY sort, id").all();
+    const out = /* @__PURE__ */ new Map();
+    const roots = new Set(rows.filter((r) => r.parent_id == null).map((r) => r.id));
+    let i = 0;
+    for (const r of rows) {
+      if (r.parent_id == null) out.set(r.id, "accent");
+      else if (roots.has(r.parent_id)) out.set(r.id, r.tree === "inkomsten" ? "mint" : isHue(r.color) ? r.color : HUES[i++ % HUES.length]);
+    }
+    for (const r of rows) if (!out.has(r.id)) out.set(r.id, out.get(r.parent_id ?? -1) ?? "accent");
+    return out;
+  }
+
   // src/lib/types.ts
   function kindOf(n) {
     if (n.effective === "budget") return "budget";
@@ -679,8 +701,10 @@ var Core = (() => {
     return node.depth === 0 ? `${node.name} (algemeen)` : [...node.path, node.name].join(" \u203A ");
   }
   function toOptions(tree) {
+    const hues = hueMap();
     return tree.flat.map((n) => ({
       id: n.id,
+      hue: hues.get(n.id) ?? "accent",
       tree: n.tree,
       name: n.name,
       label: fullName(n),
@@ -1340,7 +1364,8 @@ var Core = (() => {
       group: o.isGroup,
       kind: o.kind,
       savings: o.savings,
-      icon: o.icon
+      icon: o.icon,
+      hue: o.hue
     }));
     return json({ ...data, options, accounts: accounts().map((a) => ({ id: a.id, name: a.name, kind: a.kind })) });
   }
@@ -1445,10 +1470,11 @@ var Core = (() => {
     if (f.kind === "inkomsten") return "";
     return kindTag(f.kind);
   }
-  function row(n, level = 0) {
+  function row(n, level = 0, hues) {
     const f = figures(n);
     return {
       id: n.id,
+      hue: hues.get(n.id) ?? "accent",
       name: n.name,
       icon: n.icon,
       level,
@@ -1470,6 +1496,7 @@ var Core = (() => {
   }
   function overview(monthParam) {
     const month = defaultMonth(monthParam);
+    const hues = hueMap();
     const { uitgaven, inkomsten } = new Ledger(loadTree()).month(month);
     const planned = plannedTotal(uitgaven);
     const refunds = openRefunds();
@@ -1492,14 +1519,15 @@ var Core = (() => {
       /** Alle boekingen die nog ingedeeld moeten worden, over alle maanden (voor het bolletje bij Boekingen). */
       openTotal: db.prepare(`SELECT COUNT(*) AS n FROM transactions t JOIN accounts a ON a.id = t.account_id WHERE ${isOpenSql()}`).get().n,
       refunds: { n: refunds.length, cents: refunds.reduce((s, e) => s + e.expected - e.received, 0) },
-      groups: monthRows(uitgaven).map(({ group, rows }) => ({ ...row(group), rows: rows.map((r) => row(r.node, r.level)) })),
+      groups: monthRows(uitgaven).map(({ group, rows }) => ({ ...row(group, 0, hues), rows: rows.map((r) => row(r.node, r.level, hues)) })),
       /** Inkomstenrijen: plan is het verwachte bedrag, net wat er binnenkwam. */
-      income: rowsUnder(inkomsten).map((r) => row(r.node, r.level))
+      income: rowsUnder(inkomsten).map((r) => row(r.node, r.level, hues))
     };
   }
   function savings() {
     const last = lastBookingDate();
     const month = last?.slice(0, 7) ?? currentMonth();
+    const hues = hueMap();
     const { uitgaven } = new Ledger(loadTree()).month(month);
     const end = monthEnd(month);
     const balanceDate = last && last < end ? last : end;
@@ -1508,11 +1536,11 @@ var Core = (() => {
     const groups = uitgaven.children.filter((g2) => g2.hasPot).map((g2) => {
       const pots = [];
       const walk = (n, path) => {
-        if (n.isPot) pots.push({ ...row(n), path: path.join(" \u203A "), funding: n.funding });
+        if (n.isPot) pots.push({ ...row(n, 0, hues), path: path.join(" \u203A "), funding: n.funding });
         n.children.forEach((c) => walk(c, n === g2 ? [] : [...path, n.name]));
       };
       walk(g2, []);
-      return { id: g2.id, name: g2.name, icon: g2.icon, group: g2.children.length > 0, total: g2.pot, pots };
+      return { id: g2.id, hue: hues.get(g2.id) ?? "accent", name: g2.name, icon: g2.icon, group: g2.children.length > 0, total: g2.pot, pots };
     });
     return {
       balanceDate,
@@ -1536,6 +1564,7 @@ var Core = (() => {
     const tree = loadTree();
     const node = tree.byId.get(id);
     if (!node) return null;
+    const hues = hueMap();
     const ledger = new Ledger(tree);
     const month = defaultMonth(monthParam);
     const root = (m) => node.tree === "inkomsten" ? ledger.month(m).inkomsten : ledger.month(m).uitgaven;
@@ -1560,6 +1589,7 @@ var Core = (() => {
       months: months(),
       node: {
         id,
+        hue: hues.get(id) ?? "accent",
         name: node.name,
         path: node.path,
         icon: node.effIcon,
@@ -1572,6 +1602,7 @@ var Core = (() => {
       edit: {
         parentId: node.parent_id,
         ownIcon: node.icon,
+        ownColor: node.color,
         funding: node.funding,
         goalCents: node.goal_cents,
         goalDate: node.goal_date,
@@ -1586,7 +1617,7 @@ var Core = (() => {
       goal: stats.goal,
       history,
       bookings: bookings.map((b) => ({ ...b, transfer: !!b.transfer })),
-      children: node.children.length ? rowsUnder(stats).map((r) => row(r.node, r.level)) : []
+      children: node.children.length ? rowsUnder(stats).map((r) => row(r.node, r.level, hues)) : []
     };
   }
   function groupChoices() {
@@ -1596,7 +1627,8 @@ var Core = (() => {
   }
   function ordering() {
     const tree = loadTree();
-    const item = (n) => ({ id: n.id, name: n.name, icon: n.effIcon });
+    const hues = hueMap();
+    const item = (n) => ({ id: n.id, name: n.name, icon: n.effIcon, hue: hues.get(n.id) ?? "accent" });
     return {
       expensesRoot: tree.roots.uitgaven.id,
       incomeRoot: tree.roots.inkomsten.id,
@@ -1828,7 +1860,7 @@ var Core = (() => {
 
   // src/lib/server/maps.ts
   function get(id) {
-    return db.prepare("SELECT id, parent_id, tree, opening_cents, behavior FROM categories WHERE id = ?").get(id);
+    return db.prepare("SELECT id, parent_id, tree, opening_cents, behavior, color FROM categories WHERE id = ?").get(id);
   }
   var MapError = class extends Error {
   };
@@ -1886,6 +1918,7 @@ var Core = (() => {
     const f = input.funding;
     const funding = behavior === "pot" && (f === "spaar" || f === "betaal") ? f : null;
     const icon = CATEGORY_ICONS.includes(input.icon) ? input.icon : null;
+    const color = !group ? null : input.color === void 0 ? node.color : isHue(input.color) ? input.color : null;
     const goal = kind === "doelpot" ? input.goalCents || null : null;
     if (kind === "doelpot" && !goal) throw new MapError("Een doel heeft een doelbedrag nodig.");
     const rawDate = input.goalDate;
@@ -1900,9 +1933,9 @@ var Core = (() => {
     }
     const restart = behavior !== node.behavior;
     db.prepare(
-      `UPDATE categories SET name = ?, behavior = ?, funding = ?, icon = ?, goal_cents = ?, goal_date = ?, parent_id = ?, sort = COALESCE(?, sort),
+      `UPDATE categories SET name = ?, behavior = ?, funding = ?, icon = ?, color = ?, goal_cents = ?, goal_date = ?, parent_id = ?, sort = COALESCE(?, sort),
 		 start_month = CASE WHEN ? THEN ? ELSE start_month END WHERE id = ?`
-    ).run(name, behavior, funding, icon, goal, goalDate, parentId, sort, restart ? 1 : 0, currentMonth(), node.id);
+    ).run(name, behavior, funding, icon, color, goal, goalDate, parentId, sort, restart ? 1 : 0, currentMonth(), node.id);
   }
   function deleteMap(id) {
     const node = get(id);
@@ -1952,6 +1985,7 @@ var Core = (() => {
       updateMap(Number(params.id), {
         name: b.name,
         icon: typeof b.icon === "string" ? b.icon : "",
+        color: typeof b.color === "string" ? b.color : void 0,
         kind: typeof b.kind === "string" ? b.kind : "",
         funding: typeof b.funding === "string" ? b.funding : "",
         goalCents: Number.isInteger(b.goal_cents) ? b.goal_cents : null,
@@ -6689,7 +6723,8 @@ var Core = (() => {
   function GET8() {
     const tree = loadTree();
     const rules = db.prepare("SELECT id, field, op, pattern, category_id FROM rules ORDER BY field = 'mcc', created_at DESC, id DESC").all();
-    const budgets = tree.flat.filter((n) => isBudgetId(tree, n.id)).map((n) => ({ id: n.id, name: n.name, path: n.path.join(" \u203A ") }));
+    const opties = new Map(toOptions(tree).map((o) => [o.id, o]));
+    const budgets = tree.flat.filter((n) => isBudgetId(tree, n.id)).map((n) => ({ id: n.id, name: n.name, path: n.path.join(" \u203A "), icon: opties.get(n.id)?.icon ?? null, hue: opties.get(n.id)?.hue ?? null }));
     return json({ rules, budgets });
   }
   async function POST9({ request }) {

@@ -1,6 +1,8 @@
 <script lang="ts">
+	import { Segmentbalk, Terugknop } from 'vertex/web';
 	import Icon from '$lib/components/Icon.svelte';
 	import { enhance } from '$app/forms';
+	import { money, shortDate } from '$lib/format';
 
 	let { data, form } = $props();
 	// Gekozen soort per rekening, pas bewaard bij Opslaan.
@@ -12,7 +14,7 @@
 
 <div class="stack">
 	<header>
-		<a class="link back" href="/instellingen"><Icon name="left" size={18} /> Instellingen</a>
+		<Terugknop href="/instellingen">Instellingen</Terugknop>
 		<h1>Rekeningen</h1>
 		<p class="muted">Rekeningen verschijnen vanzelf na een upload. Op een spaarrekening houdt Stax per budget het spaarsaldo bij.</p>
 	</header>
@@ -27,12 +29,21 @@
 					<label class="field">Naam <input name="name" value={a.name} /></label>
 					<div class="field">
 						<span>Soort</span>
-						<div class="seg" role="group" aria-label="Soort rekening">
-							<button type="button" aria-pressed={kindOf(a) === 'betaal'} onclick={() => (kinds[a.id] = 'betaal')}>Betaalrekening</button>
-							<button type="button" aria-pressed={kindOf(a) === 'spaar'} onclick={() => (kinds[a.id] = 'spaar')}>Spaarrekening</button>
-						</div>
+						<Segmentbalk
+							label="Soort rekening"
+							waarde={kindOf(a)}
+							opties={[
+								{ waarde: 'betaal', label: 'Betaalrekening' },
+								{ waarde: 'spaar', label: 'Spaarrekening' }
+							]}
+							onkies={(v: string) => (kinds[a.id] = v)}
+						/>
 					</div>
-					<span class="muted small iban">{a.iban.replace(/(.{4})/g, '$1 ').trim()}</span>
+					<span class="saldo">
+						<span class="muted small">Saldo op {shortDate(data.balanceDate)}</span>
+						<strong class="num">{money(a.balance ?? 0)}</strong>
+						<span class="muted small iban">{a.iban.replace(/(.{4})/g, '$1 ').trim()}</span>
+					</span>
 					<button class="primary">Opslaan</button>
 				</form>
 			</li>
@@ -72,8 +83,14 @@
 		font-weight: 500;
 		color: var(--muted);
 	}
-	.iban {
+	.saldo {
+		display: flex;
+		flex-direction: column;
+		gap: 2px;
 		align-self: center;
+	}
+	.saldo strong {
+		font: 700 22px/28px var(--tekst-familie);
 	}
 	.acct button.primary {
 		justify-self: end;

@@ -42,7 +42,7 @@
 	const x = (i: number) =>
 		mode === 'columns' ? pad.left + slot * (i + 0.5) : pad.left + (points.length < 2 ? innerW / 2 : (i / (points.length - 1)) * innerW);
 	const y = (v: number) => pad.top + innerH - ((v - yMin) / (yMax - yMin || 1)) * innerH;
-	const barW = $derived(Math.min(24, slot * 0.6));
+	const barW = $derived(Math.min(56, slot * 0.72));
 
 	const line = $derived(points.map((p, i) => `${i ? 'L' : 'M'}${x(i)},${y(p.value)}`).join(''));
 	const area = $derived(points.length ? `${line}L${x(points.length - 1)},${y(Math.max(yMin, 0))}L${x(0)},${y(Math.max(yMin, 0))}Z` : '');
@@ -55,7 +55,7 @@
 		const base = y(0);
 		const top = y(v);
 		const h = Math.abs(base - top);
-		const r = Math.min(4, h, barW / 2);
+		const r = Math.min(8, h, barW / 2);
 		if (v >= 0) return `M${x0},${base}V${top + r}Q${x0},${top} ${x0 + r},${top}H${x0 + barW - r}Q${x0 + barW},${top} ${x0 + barW},${top + r}V${base}Z`;
 		return `M${x0},${base}V${top - r}Q${x0},${top} ${x0 + r},${top}H${x0 + barW - r}Q${x0 + barW},${top} ${x0 + barW},${top - r}V${base}Z`;
 	}
@@ -86,8 +86,8 @@
 		{#if mode === 'columns'}
 			{#if hover !== null}<rect class="hoverband" x={pad.left + slot * hover} y={pad.top} width={slot} height={innerH} rx="6" />{/if}
 			{#each points as p, i}
-				{#if p.value !== 0}<path class="col" class:over={p.target != null && p.value > p.target} d={column(i, p.value)} />{/if}
-				{#if p.target}<line class="target" x1={x(i) - slot * 0.32} x2={x(i) + slot * 0.32} y1={y(p.target)} y2={y(p.target)} />{/if}
+				{#if p.value !== 0}<path class="col" class:last={i === points.length - 1} class:over={p.target != null && p.value > p.target} d={column(i, p.value)} />{/if}
+				{#if p.target}<line class="target" x1={x(i) - barW / 2 - 4} x2={x(i) + barW / 2 + 4} y1={y(p.target)} y2={y(p.target)} />{/if}
 			{/each}
 		{:else}
 			<path class="area" d={area} />
@@ -149,7 +149,10 @@
 		stroke-linecap: round;
 	}
 	.col {
-		fill: var(--chart);
+		fill: var(--accent-soft);
+	}
+	.col.last {
+		fill: var(--accent);
 	}
 	.col.over {
 		fill: var(--neg);

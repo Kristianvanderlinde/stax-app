@@ -13,6 +13,7 @@
 		effFunding: Funding;
 		icon: string | null;
 		effIcon: string | null;
+		color: string | null;
 		goal_cents: number | null;
 		goal_date: string | null;
 		bookings: number;
@@ -26,6 +27,9 @@
 </script>
 
 <script lang="ts">
+	import { Segmentbalk } from 'vertex/web';
+	import { HUES, HUE_NAMES, hueOf, hueStyle } from '$lib/hue';
+	import { page } from '$app/state';
 	import { enhance } from '$app/forms';
 	import CategoryCombo from './CategoryCombo.svelte';
 	import Icon from './Icon.svelte';
@@ -45,7 +49,7 @@
 			([, icons]) => icons.length
 		);
 	});
-	let draft = $state({ name: '', icon: '', kind: 'budget' as Kind, funding: 'spaar' as Funding, goal: '', parent_id: 0 });
+	let draft = $state({ name: '', icon: '', color: '', kind: 'budget' as Kind, funding: 'spaar' as Funding, goal: '', parent_id: 0 });
 
 	// Doeldatum: een jaar, een maand of een precieze dag.
 	type Precision = 'jaar' | 'maand' | 'dag';
@@ -63,6 +67,7 @@
 		draft = {
 			name: node.name,
 			icon: node.icon ?? '',
+			color: node.color ?? '',
 			kind: node.kind,
 			funding: node.effFunding,
 			goal: moneyInput(node.goal_cents),
@@ -105,12 +110,33 @@
 		{:else}
 			<form id="ed-form" method="POST" action="?/opslaan" use:enhance={done} class="ed-form">
 				<input type="hidden" name="icon" value={draft.icon} />
+				<input type="hidden" name="color" value={draft.color} />
 				<input type="hidden" name="kind" value={node.tree === 'uitgaven' ? draft.kind : ''} />
 				<input type="hidden" name="funding" value={draft.kind !== 'budget' ? draft.funding : ''} />
 				<input type="hidden" name="id" value={node.id} />
 				<input type="hidden" name="parent_id" value={draft.parent_id} />
 
 				<label class="field">Naam <input name="name" bind:value={draft.name} required /></label>
+
+				{#if node.group && node.tree === 'uitgaven'}
+					<div class="field">
+						<span>Kleur</span>
+						<div class="kleuren" role="radiogroup" aria-label="Kleur van de groep">
+							{#each HUES as h (h)}
+								<button
+									type="button"
+									class="plain kleur"
+									role="radio"
+									aria-checked={(draft.color || hueOf(node.id, page.data.groupHues ?? {})) === h}
+									aria-label={HUE_NAMES[h]}
+									title={HUE_NAMES[h]}
+									style={hueStyle(node.id, {}, h)}
+									onclick={() => (draft.color = h)}
+								></button>
+							{/each}
+						</div>
+					</div>
+				{/if}
 
 				<div class="field">
 					<span>Icoon</span>
@@ -169,11 +195,16 @@
 						<div class="field">
 							<span>Moet er zijn</span>
 							<input type="hidden" name="goal_date" value={goalDate} />
-							<div class="seg wide" role="group" aria-label="Hoe precies">
-								<button type="button" aria-pressed={precision === 'jaar'} onclick={() => (precision = 'jaar')}>In een jaar</button>
-								<button type="button" aria-pressed={precision === 'maand'} onclick={() => (precision = 'maand')}>In een maand</button>
-								<button type="button" aria-pressed={precision === 'dag'} onclick={() => (precision = 'dag')}>Op een datum</button>
-							</div>
+							<Segmentbalk
+								vol
+								label="Hoe precies"
+								bind:waarde={precision}
+								opties={[
+									{ waarde: 'jaar', label: 'In een jaar' },
+									{ waarde: 'maand', label: 'In een maand' },
+									{ waarde: 'dag', label: 'Op een datum' }
+								]}
+							/>
 							{#if precision === 'dag'}
 								<input type="date" aria-label="Datum" bind:value={goalDay} />
 							{:else}
@@ -398,12 +429,20 @@
 		background: var(--gradient);
 		color: #fff;
 	}
-	.seg.wide {
+	.kleuren {
 		display: flex;
+		gap: var(--ruimte-3);
 	}
-	.seg.wide button {
-		flex: 1;
-		padding: 0 8px;
+	.kleur {
+		width: 36px;
+		height: 36px;
+		border-radius: 50%;
+		background: var(--solid);
+		box-shadow: inset 0 0 0 2px var(--surface);
+		border: 2px solid transparent;
+	}
+	.kleur[aria-checked='true'] {
+		border-color: var(--text);
 	}
 	.two {
 		display: grid;

@@ -1,4 +1,5 @@
 <script lang="ts">
+	import { Terugknop } from 'vertex/web';
 	import Icon from '$lib/components/Icon.svelte';
 	import { goto } from '$app/navigation';
 	import { money, moneyInput, parseMoney, shortDate } from '$lib/format';
@@ -25,7 +26,7 @@
 
 <form method="POST" class="stack">
 	<header>
-		<a class="link back" href="/instellingen"><Icon name="left" size={18} /> Instellingen</a>
+		<Terugknop href="/instellingen">Instellingen</Terugknop>
 		<h1>Startsaldo verdelen</h1>
 		<p class="muted">
 			Kies vanaf welke dag Stax de spaarsaldi bijhoudt en geef aan hoeveel er op die dag al bij elk budget dat spaart stond. Alles wat daarna op de spaarrekening
@@ -109,9 +110,10 @@
 		max-width: 62ch;
 	}
 	.incomepot select {
-		max-width: 320px;
+		max-width: 440px;
 	}
 	.summary {
+		overflow: hidden;
 		display: grid;
 		grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
 	}

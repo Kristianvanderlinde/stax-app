@@ -1,4 +1,6 @@
 <script lang="ts">
+	import { hueStyle } from '$lib/hue';
+	import { page } from '$app/state';
 	import Icon from '$lib/components/Icon.svelte';
 	import { figures } from '$lib/figures';
 	import { money, monthName, shortDate } from '$lib/format';
@@ -44,10 +46,10 @@
 	</section>
 
 	{#each data.groups as { group, pots } (group.id)}
-		<section>
+		<section style={hueStyle(group.id, page.data.groupHues ?? {})}>
 			<div class="section-head">
 				<a class="ghead" href="/map/{group.id}">
-					<span class="avatar sm"><Icon name={group.icon} size={18} /></span>
+					<span class="tegel groep"><Icon name={group.icon} size={18} /></span>
 					<h2>{group.name}</h2>
 					{#if group.children.length}<span class="pill num">{money(group.pot)}</span>{/if}
 				</a>
@@ -57,7 +59,7 @@
 					{@const f = figures(node)}
 					<a class="card pot" href="/map/{node.id}">
 						<span class="head">
-							<span class="avatar soft sm"><Icon name={node.icon} size={17} /></span>
+							<span class="tegel"><Icon name={node.icon} size={17} /></span>
 							<span class="names">
 								<strong>{node.name}</strong>
 								<span class="muted small">{path || kindTag(f.kind)}{node.funding === 'betaal' ? ' · op de betaalrekening' : ''}</span>
@@ -98,37 +100,26 @@
 		display: flex;
 		flex-direction: column;
 		gap: 2px;
-		padding: 22px 24px;
-		border-radius: var(--radius);
-		background: var(--gradient);
-		color: #fff;
-		box-shadow: var(--float);
-	}
-	/* Op een breed scherm een compact blok in plaats van over de hele breedte. */
-	@media (min-width: 700px) {
-		.total {
-			align-self: flex-start;
-			min-width: 280px;
-			padding-right: 40px;
-		}
+		padding: var(--ruimte-6);
+		border-radius: var(--vorm-xxl);
+		background: var(--verloop-accent);
+		color: var(--tekst-op-accent);
+		box-shadow: var(--schaduw-accent);
 	}
 	.total span {
-		opacity: 0.85;
-		font-weight: 500;
+		opacity: 0.9;
+		font: 600 15px/22px var(--tekst-familie);
 	}
 	.total strong {
-		font-size: 36px;
-		font-weight: 700;
-		letter-spacing: -0.03em;
+		font: 700 34px/40px var(--tekst-familie);
 	}
 	.check {
 		display: flex;
 		align-items: center;
-		gap: 10px;
-		padding: 12px 16px;
-		border-radius: var(--radius-sm);
+		gap: var(--ruimte-3);
+		padding: var(--ruimte-4) var(--ruimte-5);
+		border-radius: 20px;
 		background: var(--accent-soft);
-		font-size: 14px;
 	}
 	.check.off {
 		background: var(--warn-soft);
@@ -151,14 +142,14 @@
 	}
 	.grid {
 		display: grid;
-		grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
-		gap: 14px;
+		grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+		gap: var(--ruimte-4);
 	}
 	.pot {
 		display: flex;
 		flex-direction: column;
-		gap: 8px;
-		padding: 18px;
+		gap: var(--ruimte-3);
+		padding: var(--ruimte-5);
 		transition: box-shadow 0.2s var(--ease), transform 0.2s var(--ease);
 	}
 	.pot:hover {
@@ -168,7 +159,7 @@
 	.head {
 		display: flex;
 		align-items: center;
-		gap: 10px;
+		gap: var(--ruimte-3);
 		min-width: 0;
 	}
 	.names {
@@ -182,9 +173,7 @@
 		white-space: nowrap;
 	}
 	.bal {
-		font-size: 26px;
-		font-weight: 700;
-		letter-spacing: -0.03em;
+		font: 700 28px/34px var(--tekst-familie);
 	}
 	.bar.quiet > span {
 		background: color-mix(in srgb, var(--accent) 45%, transparent);

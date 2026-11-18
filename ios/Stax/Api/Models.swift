@@ -12,6 +12,8 @@ struct Bar: Codable, Hashable {
 /// Een rij in het overzicht: budget, spaarpot of groep.
 struct BudgetRow: Codable, Identifiable, Hashable {
 	let id: Int
+	/// Kleur van de groep (accent, lucht, koraal, mint of zon); ontbreekt bij oudere servers.
+	let hue: String?
 	let name: String
 	let icon: String?
 	let level: Int
@@ -27,6 +29,7 @@ struct BudgetRow: Codable, Identifiable, Hashable {
 
 struct OverviewGroup: Codable, Identifiable {
 	let id: Int
+	let hue: String?
 	let name: String
 	let icon: String?
 	let plan: Int
@@ -62,6 +65,7 @@ struct Overview: Codable {
 
 struct SavingsPot: Codable, Identifiable {
 	let id: Int
+	let hue: String?
 	let name: String
 	let icon: String?
 	let kind: String
@@ -102,6 +106,7 @@ struct BudgetDetail: Codable, Identifiable {
 	var id: Int { node.id }
 	struct Node: Codable {
 		let id: Int
+		let hue: String?
 		let name: String
 		let path: [String]
 		let icon: String?
@@ -145,6 +150,8 @@ struct BudgetDetail: Codable, Identifiable {
 		let parentId: Int?
 		/// Het eigen icoon; leeg als het budget het icoon van de groep gebruikt.
 		let ownIcon: String?
+		/// Gekozen kleur van een groep; leeg = automatisch.
+		let ownColor: String?
 		let funding: String?
 		let goalCents: Int?
 		let goalDate: String?
@@ -213,6 +220,7 @@ struct Booking: Codable, Identifiable, Hashable {
 
 struct CategoryOption: Codable, Identifiable, Hashable {
 	let id: Int
+	let hue: String?
 	let tree: String
 	let name: String
 	let label: String
@@ -318,6 +326,8 @@ struct RuleBudget: Codable, Identifiable, Hashable {
 	let id: Int
 	let name: String
 	let path: String
+	var icon: String?
+	var hue: String?
 }
 struct Rules: Codable {
 	let rules: [RuleItem]
@@ -405,11 +415,13 @@ struct Ordering: Codable {
 		let id: Int
 		let name: String
 		let icon: String?
+		let hue: String?
 	}
 	struct Group: Codable, Identifiable {
 		let id: Int
 		let name: String
 		let icon: String?
+		let hue: String?
 		var budgets: [Item]
 	}
 	let expensesRoot: Int

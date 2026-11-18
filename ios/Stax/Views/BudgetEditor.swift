@@ -21,6 +21,7 @@ struct BudgetEditor: View {
 
 	@State private var name = ""
 	@State private var icon = ""
+	@State private var color = ""
 	@State private var kind = "budget"
 	@State private var apart = true
 	@State private var goal = ""
@@ -80,39 +81,52 @@ struct BudgetEditor: View {
 	}
 
 	var body: some View {
-		NavigationStack {
-			Form {
-				if let error {
-					Section { Label(error, systemImage: "exclamationmark.triangle.fill").foregroundStyle(.red).font(.subheadline) }
-				}
-				Section {
-					TextField("Naam", text: $name)
-						.textInputAutocapitalization(.sentences)
-					NavigationLink {
+		Group {
+			VertexScherm(
+				midden: title, gloed: false, onderruimte: 40,
+				leiding: AnyView(VertexIcoonknop(systeemIcoon: "xmark", label: "Sluit", maat: 44) { dismiss() }),
+				acties: AnyView(VertexKopKnop(titel: isNew ? "Voeg toe" : "Bewaar", vet: true, uit: busy || name.trimmingCharacters(in: .whitespaces).isEmpty) { Task { await save() } })
+			) {
+				if let error { VertexMelding(tekst: error, toon: .negatief) }
+				VSection {
+					VVeld("Naam", tekst: $name)
+					if isGroup {
+						VStack(alignment: .leading, spacing: 10) {
+							Text("Kleur").foregroundStyle(Vertex.Kleur.tekstGedempt)
+							HStack(spacing: 12) {
+								ForEach(["accent", "lucht", "koraal", "mint", "zon"], id: \.self) { h in
+									let gekozen = (color.isEmpty ? (detail?.node.hue ?? "accent") : color) == h
+									Button { color = h } label: {
+										Circle().fill(VertexHue(h).effen).frame(width: 34, height: 34)
+											.overlay(Circle().strokeBorder(Vertex.Kleur.tekstHoofd, lineWidth: gekozen ? 2.5 : 0).padding(-4))
+									}
+									.buttonStyle(.plain)
+									.accessibilityLabel(h)
+									.accessibilityAddTraits(gekozen ? .isSelected : [])
+								}
+							}
+							.padding(.horizontal, 4)
+						}
+						.padding(.vertical, 4)
+					}
+					VNavigationLink {
 						IconPicker(selection: $icon, inherited: inheritedIcon, canInherit: hasOptions)
 					} label: {
 						HStack(spacing: 12) {
-							CategoryIcon(name: icon.isEmpty ? inheritedIcon : icon, size: 34)
+							CategoryIcon(name: icon.isEmpty ? inheritedIcon : icon, size: 36, hue: detail?.node.hue)
 							Text("Icoon")
 							Spacer()
-							if icon.isEmpty && hasOptions { Text("zelfde als groep").foregroundStyle(.secondary) }
+							if icon.isEmpty && hasOptions { Text("zelfde als groep").foregroundStyle(Vertex.Kleur.tekstGedempt) }
 						}
 					}
 				}
 
 				if hasOptions {
-					Section {
-						Picker("Soort", selection: $kind) {
-							Text("Budget").tag("budget")
-							Text("Spaart").tag("spaarpot")
-							Text("Doel").tag("doelpot")
-						}
-						.pickerStyle(.segmented)
+					VertexSegmentbalk(opties: [("budget", "Budget"), ("spaarpot", "Spaart"), ("doelpot", "Doel")], waarde: $kind)
+					VSection {
 						if kind != "budget" {
 							Toggle("Geld staat op de spaarrekening", isOn: $apart)
 						}
-					} header: {
-						Text("Opties")
 					} footer: {
 						Text(
 							kind == "budget" ? "Een gewoon budget: je geeft uit tot het bedrag op is."
@@ -121,85 +135,62 @@ struct BudgetEditor: View {
 						)
 					}
 					if kind == "doelpot" {
-						Section {
-							HStack {
-								Text("Doelbedrag")
-								Spacer()
-								TextField("0,00", text: $goal).keyboardType(.decimalPad).multilineTextAlignment(.trailing)
-							}
-							Picker("Moet er zijn", selection: $precision) {
-								ForEach(Precision.allCases, id: \.self) { Text($0.rawValue).tag($0) }
-							}
-							.pickerStyle(.segmented)
+						VSection {
+							VVeld("Doelbedrag", tekst: $goal, prompt: "0,00").keyboardType(.decimalPad)
+							VKeuze("Moet er zijn", selection: $precision, opties: Precision.allCases.map { ($0, $0.rawValue) })
 							switch precision {
 							case .geen: EmptyView()
 							case .jaar:
-								Picker("Jaar", selection: $goalYear) { ForEach(years, id: \.self) { Text(String($0)).tag($0) } }
+								VKeuze("Jaar", selection: $goalYear, opties: years.map { ($0, String($0)) })
 							case .maand:
-								Picker("Maand", selection: $goalMonth) { ForEach(1...12, id: \.self) { Text(Format.monthName($0)).tag($0) } }
-								Picker("Jaar", selection: $goalYear) { ForEach(years, id: \.self) { Text(String($0)).tag($0) } }
+								VKeuze("Maand", selection: $goalMonth, opties: (1...12).map { ($0, Format.monthName($0)) })
+								VKeuze("Jaar", selection: $goalYear, opties: years.map { ($0, String($0)) })
 							case .dag:
 								DatePicker("Datum", selection: $goalDay, displayedComponents: .date)
 							}
 						} header: {
-							Text("Doel")
+							Text("DOEL")
 						} footer: {
 							Text("Zonder datum houdt Stax geen schema bij.")
 						}
 					}
 					if !groups.isEmpty {
-						Section("In groep") {
-							Picker("Groep", selection: $groupId) {
-								ForEach(groups) { Text($0.name).tag($0.id) }
-							}
+						VSection("In groep") {
+							VKeuze("Groep", selection: $groupId, opties: groups.map { ($0.id, $0.name) })
 						}
 					}
 				}
 
 				if !isGroup {
-					Section {
-						HStack {
-							Text(amountLabel)
-							Spacer()
-							TextField("0,00", text: $amount).keyboardType(.decimalPad).multilineTextAlignment(.trailing)
-						}
-						Picker("Geldt", selection: $scope) {
-							Text("Vanaf \(Format.month(month, year: false))").tag("vanaf")
-							Text("Alleen \(Format.month(month, year: false))").tag("alleen")
-						}
+					VSection {
+						VVeld(amountLabel, tekst: $amount, prompt: "0,00").keyboardType(.decimalPad)
+						VertexSegmentbalk(opties: [("vanaf", "Vanaf \(Format.month(month, year: false))"), ("alleen", "Alleen \(Format.month(month, year: false))")], waarde: $scope)
+							.vzonderPadding().padding(8)
 						if let d = detail?.edit, d.override != nil, let template = d.template {
-							Button("Terug naar standaard (\(Format.money(template.amount)))") { Task { await resetOverride() } }
+							VKnopRij(actie: { Task { await resetOverride() } }) {
+								Text("Terug naar standaard (\(Format.money(template.amount)))").foregroundStyle(Vertex.Kleur.accentStandaard)
+							}
 						}
 					} header: {
-						Text("Bedrag")
+						Text("BEDRAG")
 					} footer: {
 						Text("Vanaf wijzigt het standaardbedrag voor deze en de komende maanden. Alleen geldt voor één maand.")
 					}
 				}
 
 				if let d = detail {
-					Section {
-						Button("Verwijderen", role: .destructive) { confirmDelete = true }
+					VStack(alignment: .leading, spacing: 8) {
+						Button("Verwijderen") { confirmDelete = true }
+							.buttonStyle(VertexDestructieveKnop())
 							.disabled(d.node.group && (d.edit?.childCount ?? 0) > 0)
-					} footer: {
 						if d.node.group, (d.edit?.childCount ?? 0) > 0 {
 							Text("Een groep met budgetten kan niet weg. Verplaats of verwijder eerst de budgetten.")
+								.vertexTekst(Vertex.Tekst.klein).foregroundStyle(Vertex.Kleur.tekstGedempt).padding(.horizontal, 4)
 						}
 					}
 				}
 			}
-			.navigationTitle(title)
-			.navigationBarTitleDisplayMode(.inline)
-			.toolbar {
-				ToolbarItem(placement: .cancellationAction) { Button("Annuleer") { dismiss() } }
-				ToolbarItem(placement: .confirmationAction) {
-					Button(isNew ? "Voeg toe" : "Bewaar") { Task { await save() } }
-						.disabled(busy || name.trimmingCharacters(in: .whitespaces).isEmpty)
-				}
-			}
-			.confirmationDialog(deleteQuestion, isPresented: $confirmDelete, titleVisibility: .visible) {
-				Button("Verwijderen", role: .destructive) { Task { await remove() } }
-			}
+			.vertexBevestiging(deleteQuestion, isPresented: $confirmDelete, knop: "Verwijderen") { Task { await remove() } }
 			.task {
 				await start()
 				#if DEBUG
@@ -238,6 +229,7 @@ struct BudgetEditor: View {
 			if let d = detail, let e = d.edit {
 				name = d.node.name
 				icon = e.ownIcon ?? ""
+				color = e.ownColor ?? ""
 				kind = d.node.kind == "groep" ? "budget" : d.node.kind
 				apart = (e.funding ?? d.node.funding) != "betaal"
 				if let cents = e.goalCents { goal = Format.input(cents) }
@@ -290,6 +282,7 @@ struct BudgetEditor: View {
 	private struct SaveBody: Encodable {
 		var name: String
 		var icon: String
+		var color: String?
 		var kind: String
 		var funding: String
 		var goal_cents: Int?
@@ -331,7 +324,7 @@ struct BudgetEditor: View {
 		do {
 			let body = { (id: Int) in
 				SaveBody(
-					name: trimmed, icon: icon, kind: hasOptions ? kind : "", funding: hasOptions && kind != "budget" ? (apart ? "spaar" : "betaal") : "",
+					name: trimmed, icon: icon, color: isGroup && !color.isEmpty ? color : nil, kind: hasOptions ? kind : "", funding: hasOptions && kind != "budget" ? (apart ? "spaar" : "betaal") : "",
 					goal_cents: goalCents, goal_date: goalCents != nil ? goalDate : "", parent_id: hasOptions ? groupId : nil
 				)
 			}
@@ -343,7 +336,7 @@ struct BudgetEditor: View {
 			case .newGroup:
 				let made: Created = try await session.load { try await $0.post("budgetten", CreateBody(group: true, name: trimmed)) }
 				id = made.id
-				if !icon.isEmpty { let _: Empty = try await session.load { try await $0.put("budgetten/\(id)", body(id)) } }
+				if !icon.isEmpty || !color.isEmpty { let _: Empty = try await session.load { try await $0.put("budgetten/\(id)", body(id)) } }
 			case .newBudget, .newIncome:
 				let parent = isIncome ? incomeRoot : groupId
 				let made: Created = try await session.load { try await $0.post("budgetten", CreateBody(parent_id: parent, name: trimmed, kind: hasOptions ? kind : nil)) }
@@ -409,26 +402,27 @@ struct IconPicker: View {
 	}
 
 	var body: some View {
-		ScrollView {
-			LazyVStack(alignment: .leading, spacing: 8) {
+		VertexScherm(titel: "Icoon", terug: "Terug", gloed: false, onderruimte: 40) {
+			VertexZoekveld(prompt: "Zoek, bijv. auto of vakantie", tekst: $query)
+			VStack(alignment: .leading, spacing: 8) {
 				if canInherit && query.isEmpty {
 					Button {
 						selection = ""
 						dismiss()
 					} label: {
 						HStack(spacing: 12) {
-							CategoryIcon(name: inherited, size: 34)
-							Text("Zelfde als de groep").foregroundStyle(.primary)
+							CategoryIcon(name: inherited, size: 36)
+							Text("Zelfde als de groep").foregroundStyle(Vertex.Kleur.tekstHoofd)
 							Spacer()
-							if selection.isEmpty { Image(systemName: "checkmark").foregroundStyle(Color.stax) }
+							if selection.isEmpty { VSym("checkmark").foregroundStyle(Vertex.Kleur.accentStandaard) }
 						}
 						.padding(12)
-						.background(Color(.secondarySystemGroupedBackground), in: RoundedRectangle(cornerRadius: 14, style: .continuous))
+						.vertexKaart(1, radius: 16)
 					}
 					.buttonStyle(.plain)
 				}
 				ForEach(groups, id: \.name) { group in
-					Text(group.name).font(.subheadline.weight(.semibold)).foregroundStyle(.secondary).padding(.top, 10)
+					Text(group.name.uppercased()).vertexTekst(Vertex.Tekst.label).foregroundStyle(Vertex.Kleur.tekstGedempt).padding(.top, 10).padding(.horizontal, 4)
 					LazyVGrid(columns: [GridItem(.adaptive(minimum: 52), spacing: 8)], spacing: 8) {
 						ForEach(group.icons, id: \.name) { icon in
 							Button {
@@ -445,15 +439,9 @@ struct IconPicker: View {
 					}
 				}
 				if groups.isEmpty {
-					Text("Geen icoon gevonden voor “\(query)”.").foregroundStyle(.secondary).padding(.top, 20)
+					Text("Geen icoon gevonden voor “\(query)”.").foregroundStyle(Vertex.Kleur.tekstGedempt).padding(.top, 20)
 				}
 			}
-			.padding(.horizontal, 16)
-			.padding(.bottom, 24)
 		}
-		.background(Color(.systemGroupedBackground))
-		.navigationTitle("Icoon")
-		.navigationBarTitleDisplayMode(.inline)
-		.searchable(text: $query, prompt: "Zoek, bijv. auto of vakantie")
 	}
 }

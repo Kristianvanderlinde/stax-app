@@ -24,91 +24,77 @@ struct OverviewView: View {
 		NavigationStack(path: $path) {
 			Loader(key: month ?? "", fetch: { try await $0.get("overzicht", ["maand": month]) as Overview }) { (data: Overview) in
 				let ids = [data.groups.flatMap { $0.rows.map(\.id) } + data.income.map(\.id), data.groups.map(\.id)]
-				List {
-					Section {
-						Totals(data: data)
-							.listRowInsets(EdgeInsets())
-							.listRowBackground(Color.clear)
-					}
-					if data.openTotal > 0 || data.refunds.n > 0 {
-						Section {
-							if data.open > 0 {
-								Button(action: showBookings) {
-									Label("\(data.open) \(data.open == 1 ? "boeking" : "boekingen") uit \(Format.month(data.month, year: false)) nog indelen", systemImage: "tray.full.fill")
-								}
-							}
-							// De badge bij Boekingen telt alle maanden; zo zie je waar het verschil vandaan komt.
-							if data.openTotal > data.open {
-								Button(action: showBookings) {
-									Label("\(data.openTotal - data.open) \(data.openTotal - data.open == 1 ? "boeking" : "boekingen") in andere maanden nog indelen", systemImage: "tray.full")
-								}
-							}
-							if data.refunds.n > 0 {
-								Label("\(Format.money(data.refunds.cents)) terug verwacht", systemImage: "arrow.uturn.backward.circle.fill")
-									.foregroundStyle(.secondary)
-							}
-						}
-						.font(.subheadline)
-					}
-					Section {
-						ForEach(data.groups) { group in
-							NavigationLink(value: group.id) {
-								HStack(spacing: 12) {
-									CategoryIcon(name: group.icon, size: 38, solid: true)
-									Text(group.name).font(.body.weight(.semibold))
-									Spacer(minLength: 8)
-									Text(Format.amount(group.balance ?? 0))
-										.font(.body.weight(.semibold).monospacedDigit())
-										.foregroundStyle((group.balance ?? 0) < 0 ? .red : .primary)
-								}
-								.padding(.vertical, 4)
-							}
-						}
-					} header: {
-						Text("Budgetten").font(.title3.weight(.bold)).textCase(nil).foregroundStyle(.primary).padding(.top, 6)
-					}
-					if !data.income.isEmpty {
-						Section {
-							ForEach(data.income) { row in
-								NavigationLink(value: row.id) {
-									HStack(spacing: 12) {
-										CategoryIcon(name: row.icon, size: 32)
-										VStack(alignment: .leading, spacing: 2) {
-											Text(row.name)
-											if row.plan > 0 {
-												Text("verwacht \(Format.amount(row.plan))").font(.caption).foregroundStyle(.secondary)
-											}
-										}
-										Spacer()
-										Text(Format.amount(row.net)).font(.body.weight(.semibold).monospacedDigit()).foregroundStyle(row.net > 0 ? .green : .secondary)
-									}
-								}
-							}
-						} header: {
-							Text("Inkomsten").font(.title3.weight(.bold)).textCase(nil).foregroundStyle(.primary).padding(.top, 6)
-						}
-					}
-				}
-				.listStyle(.insetGrouped)
-				.listSectionSpacing(.compact)
-				.environment(\.defaultMinListHeaderHeight, 6)
-				.contentMargins(.top, 0, for: .scrollContent)
-				.contentMargins(.bottom, 72, for: .scrollContent)
-				.navigationTitle(Format.monthTitle(data.month))
-				.navigationBarTitleDisplayMode(.large)
-				.toolbar {
-					ToolbarItem(placement: .topBarTrailing) {
-						Menu {
-							Button { adding = .budget } label: { Label("Nieuw budget", systemImage: "plus.circle") }
-							Button { adding = .group } label: { Label("Nieuwe groep", systemImage: "folder.badge.plus") }
-							Button { adding = .income } label: { Label("Nieuwe inkomsten", systemImage: "arrow.down.circle") }
+				VertexScherm(
+					titel: Format.monthTitle(data.month), gloed: true,
+					acties: AnyView(
+						VertexMenu {
+							Button { adding = .budget } label: { Label("Nieuw budget", vSym: "plus.circle") }
+							Button { adding = .group } label: { Label("Nieuwe groep", vSym: "folder.badge.plus") }
+							Button { adding = .income } label: { Label("Nieuwe inkomsten", vSym: "arrow.down.circle") }
 							Divider()
-							Button { importing = true } label: { Label("Bankexport uploaden", systemImage: "square.and.arrow.down") }
+							Button { importing = true } label: { Label("Bankexport uploaden", vSym: "square.and.arrow.down") }
 						} label: {
-							Image(systemName: "plus")
+							VertexIcoonLabel(systeemIcoon: "plus")
 						}
 						.accessibilityLabel("Nieuw")
-					}
+					)
+				) {
+						Totals(data: data)
+						if data.openTotal > 0 || data.refunds.n > 0 {
+							VStack(spacing: 0) {
+								if data.open > 0 {
+									Melding(icoon: "tray.full", tekst: "\(data.open) \(data.open == 1 ? "boeking" : "boekingen") uit \(Format.month(data.month, year: false)) nog indelen", actie: showBookings)
+								}
+								// De badge bij Boekingen telt alle maanden; zo zie je waar het verschil vandaan komt.
+								if data.openTotal > data.open {
+									Melding(icoon: "tray.full", tekst: "\(data.openTotal - data.open) \(data.openTotal - data.open == 1 ? "boeking" : "boekingen") in andere maanden nog indelen", actie: showBookings)
+								}
+								if data.refunds.n > 0 {
+									Melding(icoon: "arrow.uturn.backward", tekst: "\(Format.money(data.refunds.cents)) terug verwacht", actie: nil)
+								}
+							}
+							.vertexKaart()
+						}
+						VertexSectiekop(titel: "Budgetten").padding(.top, Vertex.Ruimte.r2)
+						VertexRijen(items: data.groups) { group in
+							NavigationLink(value: group.id) {
+								HStack(spacing: 12) {
+									VertexTegel(image: iconImage(group.icon), hue: VertexHue(group.hue), effen: true)
+									Text(group.name).vertexTekst(Vertex.Tekst.bodyVet).foregroundStyle(Vertex.Kleur.tekstHoofd)
+									Spacer(minLength: 8)
+									Text(Format.amount(group.balance ?? 0))
+										.vertexTekst(Vertex.Tekst.bodyVet).monospacedDigit()
+										.foregroundStyle((group.balance ?? 0) < 0 ? Vertex.Kleur.statusNegatief : Vertex.Kleur.tekstHoofd)
+									VSym("chevron.right", 13).foregroundStyle(Vertex.Kleur.tekstVaag)
+								}
+								.padding(.horizontal, 16).padding(.vertical, 12)
+								.contentShape(Rectangle())
+							}
+							.buttonStyle(.plain)
+						}
+						if !data.income.isEmpty {
+							VertexSectiekop(titel: "Inkomsten").padding(.top, Vertex.Ruimte.r2)
+							VertexRijen(items: data.income) { row in
+								NavigationLink(value: row.id) {
+									HStack(spacing: 12) {
+										VertexTegel(image: iconImage(row.icon), hue: VertexHue(row.hue))
+										VStack(alignment: .leading, spacing: 2) {
+											Text(row.name).vertexTekst(Vertex.Tekst.bodyVet).foregroundStyle(Vertex.Kleur.tekstHoofd)
+											if row.plan > 0 {
+												Text("verwacht \(Format.amount(row.plan))").vertexTekst(Vertex.Tekst.klein).foregroundStyle(Vertex.Kleur.tekstGedempt)
+											}
+										}
+										Spacer(minLength: 8)
+										Text(Format.amount(row.net)).vertexTekst(Vertex.Tekst.bodyVet).monospacedDigit()
+											.foregroundStyle(row.net > 0 ? Vertex.Kleur.statusPositief : Vertex.Kleur.tekstGedempt)
+										VSym("chevron.right", 13).foregroundStyle(Vertex.Kleur.tekstVaag)
+									}
+									.padding(.horizontal, 16).padding(.vertical, 12)
+									.contentShape(Rectangle())
+								}
+								.buttonStyle(.plain)
+							}
+						}
 				}
 				.sheet(isPresented: $importing) { ImportSheet() }
 				.sheet(item: $adding) { kind in
@@ -120,7 +106,7 @@ struct OverviewView: View {
 				}
 				.overlay(alignment: .bottom) {
 					PeriodBar(month: Binding(get: { month ?? data.month }, set: { month = $0 }), months: Format.choices(data.months))
-						.padding(.bottom, 8)
+						.padding(.bottom, 96)
 				}
 				.onAppear { openCount = data.openTotal }
 				.onChange(of: data.openTotal) { _, n in openCount = n }
@@ -144,7 +130,7 @@ struct OverviewView: View {
 	}
 }
 
-/// Inkomsten en uitgaven staan vooraan: groot, met een gradient. Gebudgetteerd en wat er over is komen daarna, kleiner en lichter.
+/// Inkomsten en uitgaven staan vooraan als gekleurde tegels; Gebudgetteerd en Over staan daaronder in één kaart.
 private struct Totals: View {
 	let data: Overview
 
@@ -155,23 +141,15 @@ private struct Totals: View {
 		VStack(spacing: 12) {
 			HStack(spacing: 12) {
 				Tile(
-					label: "Inkomsten",
+					label: "Inkomsten", icoon: "arrow.down.left",
 					cents: t.inkomsten,
-					gradient: .staxGradient,
 					info: "Wat er deze maand binnenkwam."
 						+ (expected > 0 ? " Verwacht: \(Format.money(expected))\(t.incomeNote.map { ", \($0)" } ?? "")." : " Vul bij Inkomsten in wat je verwacht om vooruit te plannen.")
 				)
-				Tile(
-					label: "Uitgaven",
-					cents: t.uitgaven,
-					gradient: LinearGradient(colors: [Color(red: 0x8b / 255, green: 0x9b / 255, blue: 0xf8 / 255), Color(red: 0x50 / 255, green: 0x48 / 255, blue: 0xcf / 255)], startPoint: .topLeading, endPoint: .bottomTrailing),
-					info: "Wat er deze maand is uitgegeven, met terugbetalingen er al af."
-				)
+				Tile(label: "Uitgaven", icoon: "arrow.up.right", cents: t.uitgaven, info: "Wat er deze maand is uitgegeven, met terugbetalingen er al af.")
 			}
-			// Minder belangrijk: één rustige grijze tegel, zonder gradient.
 			HStack(spacing: 0) {
 				QuietStat(label: "Gebudgetteerd", cents: t.planned, info: "Alle budgetten van deze maand samen, inclusief wat je inlegt in budgetten die sparen.")
-				Divider().frame(height: 40)
 				QuietStat(
 					label: "Over",
 					cents: t.toDistribute,
@@ -180,41 +158,41 @@ private struct Totals: View {
 				)
 			}
 			.padding(.vertical, 14)
-			.background(Color(.systemGray5), in: RoundedRectangle(cornerRadius: 22, style: .continuous))
+			.vertexKaart(1, radius: 22)
 		}
-		.padding(.top, 8)
 	}
 }
 
-/// Een grote tegel met gradient voor wat het belangrijkst is.
+/// Een gekleurde tegel met verloop voor wat het belangrijkst is.
 private struct Tile: View {
 	let label: String
+	let icoon: String
 	let cents: Int
-	let gradient: LinearGradient
 	let info: String
-	@State private var showInfo = false
 
 	var body: some View {
 		VStack(alignment: .leading, spacing: 10) {
-			HStack {
-				Text(label).font(.headline).foregroundStyle(Color.white.opacity(0.9))
+			HStack(spacing: 6) {
+				VSym(icoon, 14)
+				Text(label).vertexTekst(Vertex.Tekst.bodyVet)
 				Spacer(minLength: 4)
-				InfoButton(label: label, text: info, tint: Color.white.opacity(0.7))
+				InfoButton(label: label, text: info, tint: Color.white.opacity(0.75))
 			}
+			.foregroundStyle(Vertex.Kleur.tekstOpAccent)
 			Text(Format.money(cents))
-				.font(.title.weight(.bold).monospacedDigit())
-				.foregroundStyle(.white)
+				.vertexTekst(Vertex.Tekst.subkop).monospacedDigit()
+				.foregroundStyle(Vertex.Kleur.tekstOpAccent)
 				.lineLimit(1)
 				.minimumScaleFactor(0.6)
 		}
-		.padding(18)
-		.frame(maxWidth: .infinity, minHeight: 112, alignment: .topLeading)
-		.background(gradient, in: RoundedRectangle(cornerRadius: 22, style: .continuous))
-		.shadow(color: Color.stax.opacity(0.25), radius: 10, y: 5)
+		.padding(16)
+		.frame(maxWidth: .infinity, minHeight: 88, alignment: .topLeading)
+		.background(Vertex.verloopAccent, in: RoundedRectangle(cornerRadius: 24, style: .continuous))
+		.vertexAccentSchaduw()
 	}
 }
 
-/// Een rustig getal in de grijze tegel.
+/// Een rustig getal in de witte kaart.
 private struct QuietStat: View {
 	let label: String
 	let cents: Int
@@ -222,15 +200,15 @@ private struct QuietStat: View {
 	let info: String
 
 	var body: some View {
-		VStack(alignment: .leading, spacing: 4) {
+		VStack(alignment: .leading, spacing: 2) {
 			HStack {
-				Text(label).font(.subheadline.weight(.semibold)).foregroundStyle(.secondary)
+				Text(label).vertexTekst(Vertex.Tekst.klein).foregroundStyle(Vertex.Kleur.tekstGedempt)
 				Spacer(minLength: 4)
-				InfoButton(label: label, text: info, tint: Color.secondary.opacity(0.6))
+				InfoButton(label: label, text: info, tint: Vertex.Kleur.tekstVaag)
 			}
 			Text(Format.money(cents))
-				.font(.title3.weight(.bold).monospacedDigit())
-				.foregroundStyle(red ? Color.red : Color.primary)
+				.vertexTekst(Vertex.Tekst.bodyVet).monospacedDigit()
+				.foregroundStyle(red ? Vertex.Kleur.statusNegatief : Vertex.Kleur.tekstHoofd)
 				.lineLimit(1)
 				.minimumScaleFactor(0.6)
 		}
@@ -239,20 +217,36 @@ private struct QuietStat: View {
 	}
 }
 
+/// Een regel in de meldingenkaart: icoon, tekst en (als je erop kunt tikken) een chevron.
+private struct Melding: View {
+	let icoon: String
+	let tekst: String
+	let actie: (() -> Void)?
+
+	var body: some View {
+		let inhoud = HStack(spacing: 12) {
+			VSym(icoon, 16).foregroundStyle(actie == nil ? Vertex.Kleur.tekstGedempt : Vertex.Kleur.accentStandaard).frame(width: 20)
+			Text(tekst).vertexTekst(Vertex.Tekst.body).foregroundStyle(actie == nil ? Vertex.Kleur.tekstGedempt : Vertex.Kleur.tekstHoofd).multilineTextAlignment(.leading)
+			Spacer(minLength: 8)
+			if actie != nil { VSym("chevron.right", 13).foregroundStyle(Vertex.Kleur.tekstVaag) }
+		}
+		.padding(.horizontal, 16).padding(.vertical, 11)
+		.frame(maxWidth: .infinity, alignment: .leading)
+		.contentShape(Rectangle())
+		if let actie { Button(action: actie) { inhoud }.buttonStyle(.plain) } else { inhoud }
+	}
+}
+
 private struct InfoButton: View {
 	let label: String
 	let text: String
 	let tint: Color
-	@State private var show = false
-
 	var body: some View {
-		Button { show = true } label: {
-			Image(systemName: "info.circle").font(.subheadline).foregroundStyle(tint)
+		VertexMenu {
+			Text(text).vertexTekst(Vertex.Tekst.klein).foregroundStyle(Vertex.Kleur.tekstGedempt).padding(8)
+		} label: {
+			VSym("info.circle", 16).foregroundStyle(tint)
 		}
-		.buttonStyle(.plain)
 		.accessibilityLabel("Uitleg over \(label.lowercased())")
-		.popover(isPresented: $show) {
-			Text(text).font(.subheadline).padding().frame(width: 260, alignment: .leading).presentationCompactAdaptation(.popover)
-		}
 	}
 }

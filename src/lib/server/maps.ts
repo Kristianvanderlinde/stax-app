@@ -3,14 +3,15 @@ import { loadTree } from './categories';
 import { currentMonth } from './reports';
 import { parseMoney } from '$lib/format';
 import { CATEGORY_ICONS } from '$lib/material-icons';
+import { isHue } from '$lib/hue';
 import type { Behavior, Funding } from '$lib/types';
 
 // Budgetten en groepen aanmaken, bewerken, ordenen en verwijderen. Alleen vanuit Instellingen → Budgetten.
 
-type Row = { id: number; parent_id: number | null; tree: string; opening_cents: number; behavior: Behavior | null };
+type Row = { id: number; parent_id: number | null; tree: string; opening_cents: number; behavior: Behavior | null; color: string | null };
 
 function get(id: number) {
-	return db.prepare('SELECT id, parent_id, tree, opening_cents, behavior FROM categories WHERE id = ?').get(id) as Row | undefined;
+	return db.prepare('SELECT id, parent_id, tree, opening_cents, behavior, color FROM categories WHERE id = ?').get(id) as Row | undefined;
 }
 
 export class MapError extends Error {}
@@ -91,6 +92,8 @@ export interface MapInput {
 	name: string;
 	/** Eigen icoon; leeg = hetzelfde als de groep. */
 	icon: string;
+	/** Kleur van een groep; leeg = automatisch. */
+	color?: string;
 	/** 'budget', 'spaarpot' of 'doelpot'. */
 	kind: string;
 	funding: string;
@@ -107,6 +110,7 @@ export function mapInputFromForm(form: FormData): MapInput {
 	return {
 		name: String(form.get('name') ?? ''),
 		icon: String(form.get('icon') ?? ''),
+		color: String(form.get('color') ?? ''),
 		kind: String(form.get('kind') ?? ''),
 		funding: String(form.get('funding') ?? ''),
 		goalCents: parseMoney(String(form.get('goal') ?? '')),
@@ -129,6 +133,8 @@ export function updateMap(id: number, input: MapInput) {
 	const f = input.funding;
 	const funding: Funding | null = behavior === 'pot' && (f === 'spaar' || f === 'betaal') ? f : null;
 	const icon = CATEGORY_ICONS.includes(input.icon) ? input.icon : null;
+	// Zonder kleur in de invoer (bijv. de iOS-app) blijft de gekozen kleur staan.
+	const color = !group ? null : input.color === undefined ? node.color : isHue(input.color) ? input.color : null;
 	const goal = kind === 'doelpot' ? input.goalCents || null : null;
 	if (kind === 'doelpot' && !goal) throw new MapError('Een doel heeft een doelbedrag nodig.');
 	const rawDate = input.goalDate;
@@ -148,9 +154,9 @@ export function updateMap(id: number, input: MapInput) {
 	// Een andere soort begint deze maand; daar rekent het schema van een doelpot vanaf.
 	const restart = behavior !== node.behavior;
 	db.prepare(
-		`UPDATE categories SET name = ?, behavior = ?, funding = ?, icon = ?, goal_cents = ?, goal_date = ?, parent_id = ?, sort = COALESCE(?, sort),
+		`UPDATE categories SET name = ?, behavior = ?, funding = ?, icon = ?, color = ?, goal_cents = ?, goal_date = ?, parent_id = ?, sort = COALESCE(?, sort),
 		 start_month = CASE WHEN ? THEN ? ELSE start_month END WHERE id = ?`
-	).run(name, behavior, funding, icon, goal, goalDate, parentId, sort, restart ? 1 : 0, currentMonth(), node.id);
+	).run(name, behavior, funding, icon, color, goal, goalDate, parentId, sort, restart ? 1 : 0, currentMonth(), node.id);
 }
 
 /**

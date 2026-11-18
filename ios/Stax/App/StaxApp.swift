@@ -4,6 +4,8 @@ import SwiftUI
 @main
 struct StaxApp: App {
 	@State private var session = Session()
+
+	init() { Vertex.registreerLettertype() }
 	@Environment(\.scenePhase) private var phase
 
 	var body: some Scene {
@@ -184,11 +186,9 @@ final class Session {
 }
 
 extension Color {
-	static let stax = Color(red: 0x6a / 255, green: 0x55 / 255, blue: 0xdc / 255)
-	static let staxLight = Color(red: 0x9a / 255, green: 0x84 / 255, blue: 0xf4 / 255)
-	static let staxDark = Color(red: 0x5f / 255, green: 0x4f / 255, blue: 0xdb / 255)
+	static let stax = Vertex.Kleur.accentStandaard
 }
 
 extension ShapeStyle where Self == LinearGradient {
-	static var staxGradient: LinearGradient { LinearGradient(colors: [.staxLight, .staxDark], startPoint: .topLeading, endPoint: .bottomTrailing) }
+	static var staxGradient: LinearGradient { Vertex.verloopAccent }
 }

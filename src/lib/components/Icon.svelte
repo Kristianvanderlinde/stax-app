@@ -3,9 +3,12 @@
 
 	// Lijniconen op een raster van 24×24, 1,8 px dik.
 	export const PATHS = {
+		in: 'M17 7 7 17M7 9v8h8',
+		out: 'M7 17 17 7M9 7h8v8',
 		start: 'M4 11.5 12 5l8 6.5V20a1 1 0 0 1-1 1h-4.5v-6h-5v6H5a1 1 0 0 1-1-1z',
 		list: 'M8 6h12M8 12h12M8 18h12M4 6h.01M4 12h.01M4 18h.01',
 		upload: 'M12 15V4m0 0L7.5 8.5M12 4l4.5 4.5M5 15v4a1 1 0 0 0 1 1h12a1 1 0 0 0 1-1v-4',
+		download: 'M12 4v11m0 0l-4.5-4.5M12 15l4.5-4.5M5 15v4a1 1 0 0 0 1 1h12a1 1 0 0 0 1-1v-4',
 		tree: 'M4 5h7M8 5v14M8 12h5M8 19h5M16 12h4M16 19h4',
 		settings: 'M4 7h10M18 7h2M4 17h4M12 17h8M14 5v4M8 15v4',
 		left: 'M14.5 6 8.5 12l6 6',

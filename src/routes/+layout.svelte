@@ -300,7 +300,7 @@
 			box-shadow: 0 0 0 2px var(--surface);
 		}
 		main {
-			padding: 44px 48px 64px calc(var(--nav-w) + 16px + 48px);
+			padding: var(--ruimte-8) var(--ruimte-10) 64px calc(var(--nav-w) + var(--ruimte-4) + var(--ruimte-10));
 		}
 	}
 </style>

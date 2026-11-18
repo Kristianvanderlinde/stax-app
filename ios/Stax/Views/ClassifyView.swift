@@ -73,88 +73,73 @@ struct ClassifyView: View {
 	private var account: String { data.accounts.first { $0.id == row.accountId }?.name ?? "" }
 
 	var body: some View {
-		NavigationStack {
-			Form {
-				Section {
-					VStack(alignment: .leading, spacing: 6) {
-						Text("\(Format.date(row.bookingDate)) · \(account)").font(.subheadline).foregroundStyle(.secondary)
-						Text(Format.money(row.amountCents))
-							.font(.system(size: 34, weight: .bold).monospacedDigit())
-							.foregroundStyle(row.amountCents > 0 ? .green : .primary)
-						if !row.rawInfo.isEmpty {
-							Text(row.rawInfo).font(.caption).foregroundStyle(.secondary).lineLimit(4)
-						}
-					}
-					.listRowBackground(Color.clear)
-				}
+		inhoud
+			.interactiveDismissDisabled(busy)
+	}
 
-				if let message {
-					Section { Label(message, systemImage: "checkmark.circle.fill").foregroundStyle(.green) }
-				}
-				if let error {
-					Section { Label(error, systemImage: "exclamationmark.triangle.fill").foregroundStyle(.red) }
-				}
-
-				if row.status == "overboeking" {
-					Section {
-						Text("Dit is een overboeking tussen jullie eigen rekeningen. Die hoeft niet ingedeeld te worden: de kant van de spaarrekening hoort bij een budget dat spaart.")
-							.foregroundStyle(.secondary)
-					}
-				} else {
-					hints
-					if splitting { splitSection } else { CategoryList(options: data.options, allowed: allowed, incomeFirst: incomeFirst, selected: row.splits.count == 1 ? row.splits[0].categoryId : nil) { id in
-						Task { await save([(id, row.amountCents)]) }
-					} }
-					optionsSection
-				}
-			}
-			.navigationTitle(row.title)
-			.navigationBarTitleDisplayMode(.inline)
-			.toolbar {
-				ToolbarItem(placement: .cancellationAction) { Button("Sluit") { finish() } }
-				if row.status != "overboeking" {
-					ToolbarItem(placement: .primaryAction) {
-						Menu {
-							Button(splitting ? "Niet splitsen" : "Splitsen", systemImage: "arrow.triangle.branch") { toggleSplit() }
-							if let next = next() {
-								Button("Volgende overslaan", systemImage: "forward") { show(next) }
-							}
-						} label: {
-							Image(systemName: "ellipsis.circle")
+	private var inhoud: some View {
+		VertexScherm(
+			midden: row.title, gloed: false, onderruimte: 40,
+			leiding: AnyView(VertexIcoonknop(systeemIcoon: "xmark", label: "Sluit", maat: 44) { finish() }),
+			acties: row.status == "overboeking" ? nil : AnyView(
+				HStack(spacing: 8) {
+					VertexIcoonknop(systeemIcoon: "arrow.triangle.branch", label: splitting ? "Niet splitsen" : "Splitsen", maat: 44) { toggleSplit() }
+					VertexMenu {
+						Button { toggleSplit() } label: { Label(splitting ? "Niet splitsen" : "Splitsen", vSym: "arrow.triangle.branch") }
+						if let next = next() {
+							Button { show(next) } label: { Label("Volgende overslaan", vSym: "forward") }
 						}
+					} label: {
+						VertexIcoonLabel(systeemIcoon: "ellipsis", maat: 44)
 					}
 				}
+			)
+		) {
+			Text("\(Format.date(row.bookingDate)) · \(account) · \(Format.money(row.amountCents))")
+				.vertexTekst(Vertex.Tekst.body).foregroundStyle(row.amountCents > 0 ? Vertex.Kleur.statusPositief : Vertex.Kleur.tekstGedempt)
+			if !row.rawInfo.isEmpty {
+				Text(row.rawInfo).vertexTekst(Vertex.Tekst.klein).foregroundStyle(Vertex.Kleur.tekstGedempt).lineLimit(4)
 			}
-			.disabled(busy)
-			.onAppear { reset() }
+			if let message { VertexMelding(tekst: message, toon: .positief) }
+			if let error { VertexMelding(tekst: error, toon: .negatief) }
+
+			if row.status == "overboeking" {
+				VertexMelding(tekst: "Dit is een overboeking tussen jullie eigen rekeningen. Die hoeft niet ingedeeld te worden: de kant van de spaarrekening hoort bij een budget dat spaart.", toon: .waarschuwing, icoon: "arrow.left.arrow.right")
+			} else {
+				hints
+				if splitting { splitSection } else { CategoryList(options: data.options, allowed: allowed, incomeFirst: incomeFirst, selected: row.splits.count == 1 ? row.splits[0].categoryId : nil) { id in
+					Task { await save([(id, row.amountCents)]) }
+				} }
+				optionsSection
+			}
 		}
-		.interactiveDismissDisabled(busy)
+		.disabled(busy)
+		.onAppear { reset() }
 	}
 
 	// MARK: - Onderdelen
 
 	@ViewBuilder private var hints: some View {
 		if let source = row.refundSource {
-			Section {
+			VSection {
 				VStack(alignment: .leading, spacing: 2) {
-					Text("Teruggave van \(source.name)")
-					Text("\(Format.date(source.date)) · \(Format.money(source.amount))").font(.caption).foregroundStyle(.secondary)
+					Text("Teruggave van \(source.name)").vertexTekst(Vertex.Tekst.bodyVet)
+					Text("\(Format.date(source.date)) · \(Format.money(source.amount))").vertexTekst(Vertex.Tekst.klein).foregroundStyle(Vertex.Kleur.tekstGedempt)
 				}
-				Button("Ontkoppelen", role: .destructive) { Task { await link(nil) } }
+				VKnopRij(actie: { Task { await link(nil) } }) { Text("Ontkoppelen").foregroundStyle(Vertex.Kleur.statusNegatief) }
 			}
 		} else if !candidates.isEmpty {
-			Section("Is dit geld terug voor een uitgave?") {
+			VSection("Is dit geld terug voor een uitgave?") {
 				ForEach(candidates) { e in
-					Button { Task { await link(e.id) } } label: {
+					VKnopRij(actie: { Task { await link(e.id) } }) {
 						HStack {
-							VStack(alignment: .leading) {
-								Text(e.name).foregroundStyle(.primary)
-								Text(Format.date(e.bookingDate) + (e.note.map { " · \($0)" } ?? "")).font(.caption).foregroundStyle(.secondary)
+							VStack(alignment: .leading, spacing: 1) {
+								Text(e.name).vertexTekst(Vertex.Tekst.bodyVet).foregroundStyle(Vertex.Kleur.tekstHoofd)
+								Text(Format.date(e.bookingDate) + (e.note.map { " · \($0)" } ?? "")).vertexTekst(Vertex.Tekst.klein).foregroundStyle(Vertex.Kleur.tekstGedempt)
 							}
 							Spacer()
-							Text("nog \(Format.money(e.expected - e.received))")
-								.font(.caption.monospacedDigit())
-								.foregroundStyle(e.expected - e.received == row.amountCents ? Color.stax : .secondary)
+							Text("nog \(Format.money(e.expected - e.received))").vertexTekst(Vertex.Tekst.klein).monospacedDigit()
+								.foregroundStyle(e.expected - e.received == row.amountCents ? Vertex.Kleur.accentStandaard : Vertex.Kleur.tekstGedempt)
 						}
 					}
 				}
@@ -162,85 +147,90 @@ struct ClassifyView: View {
 		}
 
 		if row.withdrawal {
-			Section {
+			VSection {
 				Text("Geld van de spaarrekening naar de betaalrekening. Van welk budget komt het? Het saldo daarvan gaat met dit bedrag omlaag.")
-					.font(.subheadline)
-					.foregroundStyle(.secondary)
+					.foregroundStyle(Vertex.Kleur.tekstGedempt)
 				ForEach(withdrawals) { w in
-					Button { Task { await save([(w.id, row.amountCents)]) } } label: {
+					VKnopRij(actie: { Task { await save([(w.id, row.amountCents)]) } }) {
 						HStack {
-							Text(w.name).foregroundStyle(.primary)
+							Text(w.name).vertexTekst(Vertex.Tekst.bodyVet).foregroundStyle(Vertex.Kleur.tekstHoofd)
 							Spacer()
-							Text("nog \(Format.money(w.cents))")
-								.font(.caption.monospacedDigit())
-								.foregroundStyle(w.cents == -row.amountCents ? Color.stax : .secondary)
+							Text("nog \(Format.money(w.cents))").vertexTekst(Vertex.Tekst.klein).monospacedDigit()
+								.foregroundStyle(w.cents == -row.amountCents ? Vertex.Kleur.accentStandaard : Vertex.Kleur.tekstGedempt)
 						}
 					}
 				}
 			} header: {
-				if !withdrawals.isEmpty { Text("Hier moet nog geld voor komen") }
+				if !withdrawals.isEmpty { Text("HIER MOET NOG GELD VOOR KOMEN") }
 			}
 		} else if row.needsPot {
-			Section {
-				Text(
-					row.isTransfer
-						? "Geld naar de spaarrekening. Bij welk budget hoort het?"
-						: data.incomePot != nil && row.amountCents > 0
-							? "Geld dat direct op de spaarrekening binnenkomt, zoals rente. Zet je het bij inkomsten, dan komt het in \(data.incomePot!)."
-							: "Een boeking op de spaarrekening. Bij welk budget hoort het?"
-				)
-				.font(.subheadline)
-				.foregroundStyle(.secondary)
-			}
+			Text(
+				row.isTransfer
+					? "Geld naar de spaarrekening. Bij welk budget hoort het?"
+					: data.incomePot != nil && row.amountCents > 0
+						? "Geld dat direct op de spaarrekening binnenkomt, zoals rente. Zet je het bij inkomsten, dan komt het in \(data.incomePot!)."
+						: "Een boeking op de spaarrekening. Bij welk budget hoort het?"
+			)
+			.vertexTekst(Vertex.Tekst.body).foregroundStyle(Vertex.Kleur.tekstGedempt)
 		}
 	}
 
 	@ViewBuilder private var splitSection: some View {
-		Section {
+		Text("Splitsen").vertexTekst(Vertex.Tekst.kop).foregroundStyle(Vertex.Kleur.tekstHoofd)
+		VSection {
 			ForEach($parts) { $part in
-				HStack {
+				HStack(spacing: 12) {
 					NavigationLink {
-						Form {
+						VertexScherm(titel: "Kies een budget", terug: "Splitsen", gloed: false, onderruimte: 40) {
 							CategoryList(options: data.options, allowed: allowed, incomeFirst: incomeFirst, selected: part.category, closeOnPick: true) { id in
 								part.category = id
 							}
 						}
-						.navigationTitle("Kies een budget")
 					} label: {
-						Text(part.category.flatMap { id in data.options.first { $0.id == id }?.name } ?? "Kies een budget")
-							.foregroundStyle(part.category == nil ? .secondary : .primary)
+						let option = part.category.flatMap { id in data.options.first { $0.id == id } }
+						HStack(spacing: 12) {
+							VertexTegel(image: iconImage(option?.icon), hue: VertexHue(option?.hue), maat: 36)
+							Text(option?.name ?? "Kies een budget").vertexTekst(Vertex.Tekst.bodyVet)
+								.foregroundStyle(option == nil ? Vertex.Kleur.tekstVaag : Vertex.Kleur.tekstHoofd)
+						}
 					}
+					.buttonStyle(.plain)
 					TextField("0,00", text: $part.amount)
 						.keyboardType(.decimalPad)
 						.multilineTextAlignment(.trailing)
-						.frame(width: 96)
+						.vertexTekst(Vertex.Tekst.bodyVet)
 						.monospacedDigit()
+						.padding(.horizontal, 10).frame(width: 96, height: 38)
+						.background(Vertex.Kleur.achtergrondKaart2, in: RoundedRectangle(cornerRadius: 10, style: .continuous))
+					if parts.count > 2 {
+						Button { parts.removeAll { $0.id == part.id } } label: { VSym("xmark.circle.fill").foregroundStyle(Vertex.Kleur.tekstVaag) }
+							.buttonStyle(.plain)
+					}
 				}
 			}
-			.onDelete { parts.remove(atOffsets: $0) }
-			Button("Deel toevoegen", systemImage: "plus") {
-				parts.append(Part(category: nil, amount: remaining == 0 ? "" : Format.input(remaining)))
-			}
-		} header: {
-			Text("Splitsen")
-		} footer: {
-			Text(remaining == 0 ? "Klopt precies." : "Nog \(Format.money(remaining)) te verdelen.")
-				.foregroundStyle(remaining == 0 ? Color.secondary : Color.orange)
 		}
-		Section {
-			Button("Opslaan") {
-				let splits = parts.compactMap { p -> (Int, Int)? in
-					guard let c = p.category, let a = Format.parse(p.amount), a != 0 else { return nil }
-					return (c, row.amountCents < 0 ? -abs(a) : abs(a))
-				}
-				Task { await save(splits) }
-			}
-			.disabled(remaining != 0)
+		Button {
+			parts.append(Part(category: nil, amount: remaining == 0 ? "" : Format.input(remaining)))
+		} label: {
+			Label("Deel toevoegen", vSym: "plus")
 		}
+		.buttonStyle(VertexSecundaireKnop())
+		Text(remaining == 0 ? "Samen \(Format.money(abs(row.amountCents))) · alles verdeeld" : "Nog \(Format.money(remaining)) te verdelen.")
+			.vertexTekst(Vertex.Tekst.klein).foregroundStyle(remaining == 0 ? Vertex.Kleur.statusPositief : Vertex.Kleur.statusWaarschuwing)
+		Button("Opslaan") {
+			let splits = parts.compactMap { p -> (Int, Int)? in
+				guard let c = p.category, let a = Format.parse(p.amount), a != 0 else { return nil }
+				return (c, row.amountCents < 0 ? -abs(a) : abs(a))
+			}
+			Task { await save(splits) }
+		}
+		.buttonStyle(VertexPrimaireKnop())
+		.disabled(remaining != 0)
+		.opacity(remaining != 0 ? 0.5 : 1)
 	}
 
 	@ViewBuilder private var optionsSection: some View {
-		Section {
+		VSection {
 			if !splitting && !row.withdrawal {
 				Toggle(isOn: $remember) {
 					Text(row.needsPot || row.counterparty == nil ? "“\(row.description.isEmpty ? "—" : row.description)” voortaan zo indelen" : "\(row.counterparty!) voortaan zo indelen")
@@ -251,37 +241,30 @@ struct ClassifyView: View {
 					VStack(alignment: .leading, spacing: 2) {
 						Text("Van het saldo afhalen")
 						Text(fromPot ? "Dit geld moet nog van de spaarrekening komen." : "Telt mee als uitgegeven; de lopende rekening betaalt het.")
-							.font(.caption)
-							.foregroundStyle(.secondary)
+							.vertexTekst(Vertex.Tekst.klein).foregroundStyle(Vertex.Kleur.tekstGedempt)
 					}
 				}
 			}
 			if row.amountCents < 0 && !row.isTransfer {
 				Toggle("Ik krijg hier geld voor terug", isOn: $refundOn)
 				if refundOn {
-					HStack {
-						Text("Hoeveel")
-						TextField("0,00", text: $refundAmount).keyboardType(.decimalPad).multilineTextAlignment(.trailing).monospacedDigit()
-					}
+					VVeld("Hoeveel", tekst: $refundAmount, prompt: "0,00").keyboardType(.decimalPad).monospacedDigit()
 					if row.refundReceived > 0 {
-						Text("Al \(Format.money(row.refundReceived)) terug").font(.caption).foregroundStyle(.secondary)
+						Text("Al \(Format.money(row.refundReceived)) terug").vertexTekst(Vertex.Tekst.klein).foregroundStyle(Vertex.Kleur.tekstGedempt)
 					}
 					if row.refundExpected != nil {
-						Button("Klaar, niet meer verwachten") { Task { await closeRefund() } }
+						VKnopRij(actie: { Task { await closeRefund() } }) { Text("Klaar, niet meer verwachten").foregroundStyle(Vertex.Kleur.accentStandaard) }
 					}
 				}
 			}
 			Toggle("Niet meetellen", isOn: $excluded)
 			TextField("Notitie", text: $note, axis: .vertical)
-		} footer: {
-			if !row.splits.isEmpty && !splitting {
-				Button("Wijzigingen opslaan") {
-					Task { await save(row.splits.map { ($0.categoryId, $0.amountCents) }) }
-				}
-				.font(.body.weight(.semibold))
-				.frame(maxWidth: .infinity)
-				.padding(.top, 8)
+		}
+		if !row.splits.isEmpty && !splitting {
+			Button("Wijzigingen opslaan") {
+				Task { await save(row.splits.map { ($0.categoryId, $0.amountCents) }) }
 			}
+			.buttonStyle(VertexPrimaireKnop())
 		}
 	}
 
@@ -415,49 +398,33 @@ struct CategoryList: View {
 	}
 
 	var body: some View {
-		let list = visible
-		Section {
-			TextField("Zoek een budget", text: $query)
-				.textInputAutocapitalization(.never)
-				.autocorrectionDisabled()
-			ForEach(Array(list.enumerated()), id: \.element.id) { i, o in
-				if i == 0 || list[i - 1].tree != o.tree, query.isEmpty {
-					Text(o.tree == "uitgaven" ? "UITGAVEN" : "INKOMSTEN")
-						.font(.caption.weight(.semibold))
-						.foregroundStyle(.secondary)
-				}
-				if o.group {
-					HStack(spacing: 10) {
-						CategoryIcon(name: o.icon, size: 24, solid: o.depth == 1)
-						Text(o.name).font(.subheadline.weight(.semibold)).foregroundStyle(.secondary)
-					}
-					.padding(.leading, CGFloat(max(0, o.depth - 1)) * 16)
-				} else {
-					Button {
-						pick(o.id)
-						if closeOnPick { dismiss() }
-					} label: {
-						HStack(spacing: 10) {
-							CategoryIcon(name: o.icon, size: 26)
-							VStack(alignment: .leading, spacing: 1) {
-								Text(o.name).foregroundStyle(.primary)
-								if !query.isEmpty && o.depth > 1 {
-									Text(o.label).font(.caption).foregroundStyle(.secondary)
-								}
-							}
-							Spacer()
-							if o.tree == "uitgaven" && o.kind != "budget" {
-								Text(o.kind == "doelpot" ? "Spaart · doel" : "Spaart").font(.caption).foregroundStyle(Color.stax)
-							}
-							if selected == o.id { Image(systemName: "checkmark").foregroundStyle(Color.stax) }
+		let list = visible.filter { !$0.group }
+		VertexZoekveld(prompt: "Zoek een budget", tekst: $query)
+		VSection {
+			ForEach(list) { o in
+				VKnopRij(actie: {
+					pick(o.id)
+					if closeOnPick { dismiss() }
+				}) {
+					HStack(spacing: 12) {
+						VertexTegel(image: iconImage(o.icon), hue: VertexHue(o.hue), maat: 38)
+						VStack(alignment: .leading, spacing: 1) {
+							Text(o.name).vertexTekst(Vertex.Tekst.bodyVet).foregroundStyle(Vertex.Kleur.tekstHoofd)
+							Text(o.tree == "inkomsten" ? "Inkomsten" : (o.label.components(separatedBy: " › ").dropLast().last ?? ""))
+								.vertexTekst(Vertex.Tekst.klein).foregroundStyle(Vertex.Kleur.tekstGedempt)
+						}
+						Spacer()
+						if o.tree == "uitgaven" && o.kind != "budget" {
+							Text(o.kind == "doelpot" ? "Spaart · doel" : "Spaart").vertexTekst(Vertex.Tekst.label).foregroundStyle(Vertex.Kleur.accentStandaard)
+						}
+						if selected == o.id {
+							VSym("checkmark", 11).foregroundStyle(Vertex.Kleur.tekstOpAccent)
+								.frame(width: 22, height: 22).background(Vertex.Kleur.accentVlak, in: Circle())
 						}
 					}
-					.tint(.primary)
-					.padding(.leading, query.isEmpty ? CGFloat(max(0, o.depth - 1)) * 16 : 0)
+					.padding(.vertical, -3)
 				}
 			}
-		} header: {
-			Text("Budget")
 		}
 	}
 }

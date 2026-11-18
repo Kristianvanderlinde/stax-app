@@ -1,4 +1,5 @@
 import { db } from './db';
+import { hueMap } from './hues';
 import { kindOf, type CatNode, type CatOption, type Category, type Tree } from '$lib/types';
 
 export interface CategoryTree {
@@ -44,8 +45,10 @@ export function fullName(node: CatNode): string {
 }
 
 export function toOptions(tree: CategoryTree): CatOption[] {
+	const hues = hueMap();
 	return tree.flat.map((n) => ({
 		id: n.id,
+		hue: hues.get(n.id) ?? 'accent',
 		tree: n.tree,
 		name: n.name,
 		label: fullName(n),
