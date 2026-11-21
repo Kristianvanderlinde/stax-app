@@ -95,7 +95,7 @@ struct BudgetDetailView: View {
 					months: Format.choices(data.months),
 					browse: .init(name: data.node.name, previous: around.previous, next: around.next, go: { id = $0 })
 				)
-				.padding(.bottom, 96)
+				.padding(.bottom, VertexTabbalk<RootView.Tab>.periodeOnderrand)
 			}
 		}
 	}

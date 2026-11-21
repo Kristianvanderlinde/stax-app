@@ -396,7 +396,7 @@ struct VertexTabbalk<Tab: Hashable>: View {
 						Text(item.titel).vertexTekst(Vertex.Stijl(grootte: 10, regelhoogte: 14, gewicht: 600)).lineLimit(1)
 					}
 					.foregroundStyle(actief ? Vertex.Kleur.accentStandaard : Vertex.Kleur.tekstGedempt)
-					.frame(maxWidth: .infinity, minHeight: 59)
+					.frame(maxWidth: .infinity, minHeight: 52)
 					.background {
 						if actief {
 							RoundedRectangle(cornerRadius: 28, style: .continuous).fill(Vertex.Kleur.accentZacht)
@@ -422,8 +422,23 @@ struct VertexTabbalk<Tab: Hashable>: View {
 		}
 		.padding(6)
 		.vertexKaart(3, radius: 34)
-		.padding(.horizontal, 16)
-		.padding(.bottom, 6)
+		.padding(.horizontal, Self.zijrand)
+		.offset(y: Self.zakOmlaag)
+	}
+
+	/// Zoals de tabbalk van iOS zelf: ruim van de zijkanten (een andere maat dan de inhoud van 16 punten) en laag,
+	/// zodat de rondingen van de balk meelopen met de hoeken van het scherm.
+	static var zijrand: CGFloat { 21 }
+
+	/// Onderrand van de zwevende maandbalk boven de tabbalk (gemeten vanaf de veilige zone): de tabbalk staat lager dan voorheen.
+	static var periodeOnderrand: CGFloat { 72 }
+
+	/// Hoeveel de balk in de veilige zone onderaan zakt: de afstand tot de onderrand wordt het (veilige) inset min 12 punten,
+	/// bij een toestel zonder streepje onderaan 12 punten.
+	static var zakOmlaag: CGFloat {
+		let inset = UIApplication.shared.connectedScenes.compactMap { ($0 as? UIWindowScene)?.keyWindow }.first?.safeAreaInsets.bottom ?? 0
+		let marge = inset > 0 ? max(inset - 12, 8) : 12
+		return inset - marge
 	}
 }
 

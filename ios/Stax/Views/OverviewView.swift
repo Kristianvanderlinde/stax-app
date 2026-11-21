@@ -106,7 +106,7 @@ struct OverviewView: View {
 				}
 				.overlay(alignment: .bottom) {
 					PeriodBar(month: Binding(get: { month ?? data.month }, set: { month = $0 }), months: Format.choices(data.months))
-						.padding(.bottom, 96)
+						.padding(.bottom, VertexTabbalk<RootView.Tab>.periodeOnderrand)
 				}
 				.onAppear { openCount = data.openTotal }
 				.onChange(of: data.openTotal) { _, n in openCount = n }
