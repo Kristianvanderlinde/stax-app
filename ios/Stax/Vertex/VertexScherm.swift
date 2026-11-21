@@ -385,6 +385,8 @@ struct VertexTabbalk<Tab: Hashable>: View {
 	let items: [Item]
 	@Binding var gekozen: Tab
 	@Namespace private var pil
+	/// Onderste veilige zone van het scherm (het streepje onderaan); wordt uitgelezen met `onGeometryChange`. Niet uit UIKit lezen in `body`: dan ververst de balk niet meer.
+	@State private var onderinset: CGFloat = 34
 
 	var body: some View {
 		HStack(spacing: 2) {
@@ -423,7 +425,10 @@ struct VertexTabbalk<Tab: Hashable>: View {
 		.padding(6)
 		.vertexKaart(3, radius: 34)
 		.padding(.horizontal, Self.zijrand)
-		.offset(y: Self.zakOmlaag)
+		.padding(.bottom, onderrand)
+		.frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .bottom)
+		.ignoresSafeArea(.container, edges: .bottom)
+		.onGeometryChange(for: CGFloat.self) { $0.safeAreaInsets.bottom } action: { onderinset = $0 }
 	}
 
 	/// Zoals de tabbalk van iOS zelf: ruim van de zijkanten (een andere maat dan de inhoud van 16 punten) en laag,
@@ -433,13 +438,8 @@ struct VertexTabbalk<Tab: Hashable>: View {
 	/// Onderrand van de zwevende maandbalk boven de tabbalk (gemeten vanaf de veilige zone): de tabbalk staat lager dan voorheen.
 	static var periodeOnderrand: CGFloat { 72 }
 
-	/// Hoeveel de balk in de veilige zone onderaan zakt: de afstand tot de onderrand wordt het (veilige) inset min 12 punten,
-	/// bij een toestel zonder streepje onderaan 12 punten.
-	static var zakOmlaag: CGFloat {
-		let inset = UIApplication.shared.connectedScenes.compactMap { ($0 as? UIWindowScene)?.keyWindow }.first?.safeAreaInsets.bottom ?? 0
-		let marge = inset > 0 ? max(inset - 12, 8) : 12
-		return inset - marge
-	}
+	/// Afstand van de balk tot de onderrand van het scherm: het (veilige) inset min 12 punten, bij een toestel zonder streepje 12 punten.
+	var onderrand: CGFloat { onderinset > 0 ? max(onderinset - 12, 8) : 12 }
 }
 
 // MARK: - Velden in rijen
